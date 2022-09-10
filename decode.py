@@ -57,7 +57,7 @@ for file in os.listdir(backup_dir):
         with mp.VideoFileClip(videopath) as video:
             video = video.resize((1080,1920))
             for sign, recording_list in data.items():
-                for idx, recording in enumerate(recording_list):
+                for recording in recording_list:
                     filename, video_start_time, sign_start_time, sign_end_time = recording
                     video_start_time_date = datetime.strptime(video_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
                     sign_start_time_date = datetime.strptime(sign_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
@@ -68,4 +68,4 @@ for file in os.listdir(backup_dir):
                     end_seconds = sign_end_time_date - video_start_time_date
                     # print(start_seconds, end_seconds)
                     new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
-                    new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{idx}.mp4"))
+                    new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{sign_start_time}.mp4"))
