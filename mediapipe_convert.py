@@ -189,13 +189,13 @@ def enumerate_files(input_folder):
         # <id> = user's ID
         # <sign> = word being signed
         # <start-time> = time the recording started
-        split = file.split('_')
+        split = file.split('.')
         if len(split) < 3:
             print(f'{file}: Skipped due to incorrect filename format')
             continue
 
         user_id, session_start = split[0], split[1]
-        sign = '.'.join(split[2].split('.')[:-1])
+        sign = '_'.join(split[2].split('_')[:-1])
 
         if user_id not in attempt_counts:
             attempt_counts[user_id] = dict()
@@ -210,16 +210,16 @@ def enumerate_files(input_folder):
 
         input_filenames.append(f'{INPUT_DIRECTORY}{file}')
 
-        # <id>-singlesign/<sign>/<attempt>/<id>_singlesign_<sign>_<attempt>.data
+        # <id>-singlesign/<sign>/<attempt>/<id>.singlesign.<sign>.<attempt>.data
         # <id> = user's ID
         # <sign> = word being signed
         # <attempt> = counter, starting at 00000001
         attempt_str = pad(attempt_counts[user_id][session_start][sign])
         output_filenames.append(f'{OUTPUT_DIRECTORY}{user_id}-{FILE_LABEL}/{sign}/'
-                                f'{session_start}/{user_id}_{FILE_LABEL}_{sign}_{attempt_str}.data')
+                                f'{session_start}/{user_id}.{FILE_LABEL}.{sign}.{attempt_str}.data')
 
     # '1-2022-05-singlesign'
-    # ['test_hello_2022.09.10.mp4'], ['./test-singlesign/hello/2022.09.10/test_singlesign_hello_00000001.data']
+    # ['test_hello_2022.09.10.mp4'], ['./test-singlesign/hello/2022.09.10/test.singlesign.hello.00000001.data']
     return input_filenames, output_filenames
 
 
