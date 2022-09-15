@@ -1,16 +1,15 @@
 from PIL import Image
 from PIL.ExifTags import TAGS
+from datetime import datetime
+from tqdm import tqdm
 
 import re
+import os
+import argparse
 
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import moviepy.editor as mp
 
-import os
-
-from datetime import datetime
-
-import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -54,7 +53,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, video):
     sign_end_time_date = datetime.strptime(sign_end_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     
     # print(video_start_time_date)
-    print(sign, filename, video_start_time, sign_start_time, sign_end_time)
+    # print(sign, filename, video_start_time, sign_start_time, sign_end_time)
     
     start_seconds = sign_start_time_date - video_start_time_date
     end_seconds = sign_end_time_date - video_start_time_date
@@ -63,7 +62,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, video):
     new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
     if not os.path.exists(args.dest_dir):
         os.makedirs(args.dest_dir)
-    new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"))
+    new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
     
 def get_uid(args, filename):
     imagepath = os.path.join(args.backup_dir, filename)
@@ -72,24 +71,31 @@ def get_uid(args, filename):
     uid = videoname.split('-')[0]
     return uid, videopath
 
+def process_file(args, pbar, file):
+    filename = os.fsdecode(file)
+    pbar.set_description('Processing Timestamps File: %s' % filename)
+
+    if filename.endswith("-timestamps.jpg"):
+        image = Image.open(os.path.join(args.backup_dir, filename))
+        exifdata = image.getexif()
+
+        description = get_image_description(exifdata) 
+        data = get_data_from_description(description)
+        uid, videopath = get_uid(args, filename)
+
+        with mp.VideoFileClip(videopath) as video:
+            video = video.resize(args.video_dim)
+            for sign, recording_list in data.items():
+                for idx, recording in enumerate(recording_list):
+                    # thread_args = (args, uid, sign, idx, recording, video)
+                    extract_clip_from_video(args, uid, sign, idx, recording, video)
+    
+
 if __name__ == "__main__":
     args = parse_args()
     print("Args: ", args)
 
     backup_dir = os.fsencode(args.backup_dir)
-    for file in os.listdir(backup_dir):
-        filename = os.fsdecode(file)
-        if filename.endswith("-timestamps.jpg"):
-            image = Image.open(os.path.join(args.backup_dir, filename))
-            exifdata = image.getexif()
-
-            description = get_image_description(exifdata) 
-            data = get_data_from_description(description)
-            uid, videopath = get_uid(args, filename)
-
-            with mp.VideoFileClip(videopath) as video:
-                video = video.resize(args.video_dim)
-                for sign, recording_list in data.items():
-                    for idx, recording in enumerate(recording_list):
-                        extract_clip_from_video(args, uid, sign, idx, recording, video)
-
+    pbar = tqdm(os.listdir(backup_dir))
+    for file in pbar:
+        process_file(args, pbar, file)
