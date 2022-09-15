@@ -14,8 +14,9 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backup_dir', type=str)
-    parser.add_argument('--dest_dir', type=str)
+    parser.add_argument('--backup_dir', required=True, type=str)
+    parser.add_argument('--dest_dir', required=True, type=str)
+    parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
     
     args = parser.parse_args()
     return args
@@ -46,7 +47,7 @@ def get_data_from_description(description):
     data = eval(subbed)
     return data
 
-def extract_clip_from_video(args, sign, recording_idx, recording, video):
+def extract_clip_from_video(args, uid, sign, recording_idx, recording, video):
     filename, video_start_time, sign_start_time, sign_end_time = recording
     video_start_time_date = datetime.strptime(video_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_start_time_date = datetime.strptime(sign_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
@@ -60,8 +61,16 @@ def extract_clip_from_video(args, sign, recording_idx, recording, video):
     
     # print(start_seconds, end_seconds)
     new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
+    if not os.path.exists(args.dest_dir):
+        os.makedirs(args.dest_dir)
     new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"))
     
+def get_uid(args, filename):
+    imagepath = os.path.join(args.backup_dir, filename)
+    videopath = re.sub(r'-timestamps.jpg', r'.mp4', imagepath)
+    _, videoname = os.path.split(videopath)
+    uid = videoname.split('-')[0]
+    return uid, videopath
 
 if __name__ == "__main__":
     args = parse_args()
@@ -76,16 +85,11 @@ if __name__ == "__main__":
 
             description = get_image_description(exifdata) 
             data = get_data_from_description(description)
-            
-            # Extract Info from Paths
-            imagepath = os.path.join(args.backup_dir, filename)
-            videopath = re.sub(r'-timestamps.jpg', r'.mp4', imagepath)
-            header, videoname = os.path.split(videopath)
-            uid = videoname.split('-')[0]
-    
+            uid, videopath = get_uid(args, filename)
+
             with mp.VideoFileClip(videopath) as video:
-                video = video.resize((1080,1920))
+                video = video.resize(args.video_dim)
                 for sign, recording_list in data.items():
                     for idx, recording in enumerate(recording_list):
-                        extract_clip_from_video(args, sign, idx, recording, video)
+                        extract_clip_from_video(args, uid, sign, idx, recording, video)
 
