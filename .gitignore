@@ -1,0 +1,4 @@
+# Added input/output dirs
+processed/
+raw/
+mediapipe/
