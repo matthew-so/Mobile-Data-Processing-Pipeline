@@ -2,6 +2,8 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from datetime import datetime
 from tqdm import tqdm
+from multiprocess import Pool, Lock
+from collections import defaultdict
 
 import re
 import os
@@ -10,12 +12,14 @@ import argparse
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import moviepy.editor as mp
 
+# video_locks = defaultdict(Lock)
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backup_dir', required=True, type=str)
     parser.add_argument('--dest_dir', required=True, type=str)
     parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
+    parser.add_argument('--num_threads', type=int, default=5)
     
     args = parser.parse_args()
     return args
@@ -46,23 +50,27 @@ def get_data_from_description(description):
     data = eval(subbed)
     return data
 
-def extract_clip_from_video(args, uid, sign, recording_idx, recording, video):
+def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath):
     filename, video_start_time, sign_start_time, sign_end_time = recording
     video_start_time_date = datetime.strptime(video_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_start_time_date = datetime.strptime(sign_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_end_time_date = datetime.strptime(sign_end_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     
     # print(video_start_time_date)
-    # print(sign, filename, video_start_time, sign_start_time, sign_end_time)
+    print(sign, filename, video_start_time, sign_start_time, sign_end_time)
     
     start_seconds = sign_start_time_date - video_start_time_date
     end_seconds = sign_end_time_date - video_start_time_date
     
     # print(start_seconds, end_seconds)
-    new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
-    if not os.path.exists(args.dest_dir):
-        os.makedirs(args.dest_dir)
-    new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
+    # video_locks[videopath].acquire()
+    
+    with mp.VideoFileClip(videopath) as video:
+        video = video.resize(args.video_dim)
+        new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
+        new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
+    
+    # video_locks[videopath].release()
     
 def get_uid(args, filename):
     imagepath = os.path.join(args.backup_dir, filename)
@@ -71,9 +79,10 @@ def get_uid(args, filename):
     uid = videoname.split('-')[0]
     return uid, videopath
 
-def process_file(args, pbar, file):
+def process_file(args, pool, pbar, file):
     filename = os.fsdecode(file)
     pbar.set_description('Processing Timestamps File: %s' % filename)
+    results = []
 
     if filename.endswith("-timestamps.jpg"):
         image = Image.open(os.path.join(args.backup_dir, filename))
@@ -83,19 +92,34 @@ def process_file(args, pbar, file):
         data = get_data_from_description(description)
         uid, videopath = get_uid(args, filename)
 
-        with mp.VideoFileClip(videopath) as video:
-            video = video.resize(args.video_dim)
-            for sign, recording_list in data.items():
-                for idx, recording in enumerate(recording_list):
-                    # thread_args = (args, uid, sign, idx, recording, video)
-                    extract_clip_from_video(args, uid, sign, idx, recording, video)
-    
+
+        # with mp.VideoFileClip(videopath) as video:
+        #     video = video.resize(args.video_dim)
+        for sign, recording_list in data.items():
+            for idx, recording in enumerate(recording_list):
+                thread_args = (args, uid, sign, idx, recording, videopath)
+                result = pool.apply_async(extract_clip_from_video, args = thread_args)
+                results.append(result)
+                # extract_clip_from_video(args, uid, sign, idx, recording, video)
+    return results
 
 if __name__ == "__main__":
     args = parse_args()
     print("Args: ", args)
+    
+    if not os.path.exists(args.dest_dir):
+        os.makedirs(args.dest_dir)
 
     backup_dir = os.fsencode(args.backup_dir)
     pbar = tqdm(os.listdir(backup_dir))
+    pool = Pool(args.num_threads)
+    results = []
+
     for file in pbar:
-        process_file(args, pbar, file)
+        file_results = process_file(args, pool, pbar, file)
+        results.extend(file_results)
+    
+    for result in results:
+        result.get()
+
+    pool.close()

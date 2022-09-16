@@ -11,6 +11,7 @@ kiwisolver==1.4.4
 matplotlib==3.5.3
 mediapipe==0.8.11
 moviepy==1.0.3
+multiprocess==0.70.13
 numpy==1.23.2
 opencv-contrib-python==4.6.0.66
 packaging==21.3
