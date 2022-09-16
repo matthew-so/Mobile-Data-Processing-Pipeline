@@ -4,6 +4,7 @@ import json
 import threading
 import os
 import argparse
+import time
 
 from pathlib import Path
 
@@ -265,7 +266,12 @@ if __name__ == '__main__':
         PADDING_DIGITS = parsed.paddingDigits
 
     input_files, output_files = enumerate_files(INPUT_DIRECTORY)
+
+    start_time = time.time()
     df_multithreaded(input_files, output_files)
+    end_time = time.time()
+
+    print(f'Time elapsed = {(end_time - start_time) * 1000} ms')
 
 
 
