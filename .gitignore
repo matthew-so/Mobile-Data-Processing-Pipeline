@@ -1,4 +1,8 @@
 # Added input/output dirs
 processed/
 raw/
+logs/
 mediapipe/
+
+# Temp
+htk/
