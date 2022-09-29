@@ -115,7 +115,7 @@ if __name__ == "__main__":
         os.makedirs(args.dest_dir)
 
     if args.log_file is None:
-        args.log_file = os.path.join('logs', 'decode_' + datetime.now().strftime('%Y%m%d_%M%S'))
+        args.log_file = os.path.join('logs', 'decode_' + datetime.now().strftime('%Y-%m-%d_%H-%M'))
     
     backup_dir = os.fsencode(args.backup_dir)
     pbar = tqdm(os.listdir(backup_dir))
