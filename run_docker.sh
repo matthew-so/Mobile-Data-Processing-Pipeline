@@ -8,6 +8,12 @@ if [ "$1" == "launch" ]; then
     sudo docker cp "$vimrc_path" sign_recognition:/root
 elif [ "$1" == "run" ]; then
     sudo docker exec -it sign_recognition /bin/bash
+elif [ "$1" == "run_command" ]; then
+    if [ "$2" == "" ]; then
+        echo "Must pass the command as the second argument"
+        exit 1
+    fi
+    sudo docker exec -d sign_recognition "$2"
 else
     echo "Specify either launch (create the container) or run (resume the existing conainer)"
 fi

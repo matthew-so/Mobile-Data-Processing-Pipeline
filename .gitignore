@@ -1,5 +1,5 @@
 # Added input/output dirs
-processed/
+split/
 raw/
 logs/
 mediapipe/
