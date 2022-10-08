@@ -1,8 +1,14 @@
 # Added input/output dirs
 split/
+split_test/
 raw/
 logs/
 mediapipe/
+mediapipe_tst/
+
+# Housekeeping Dirs
+.vscode/
+__pycache__/
 
 # Temp
 hmm/

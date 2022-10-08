@@ -70,6 +70,8 @@ def detect_features(video_file, output_file):
         video = cv.VideoCapture(video_file)
         features = dict()
         curr_frame = 0
+        
+        # print("Video File: ", video_file)
         while video.isOpened():
             success, image = video.read()
             if not success:
@@ -79,6 +81,18 @@ def detect_features(video_file, output_file):
             image.flags.writeable = False
             image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
             results = holistic.process(image)
+
+            # if results.left_hand_landmarks is not None:
+            #     print("Results (Left Hand Landmarks) is not None.")
+            # else:
+            #     print("Results (Left Hand Landmarks) is None.")
+            # 
+            # if results.right_hand_landmarks is not None:
+            #     print("Results (Right Hand Landmarks) is not None.")
+            # else:
+            #     print("Results (Right Hand Landmarks) is None.")
+
+            # print()
 
             # Available features: results.face_landmarks, results.left_hand_landmarks,
             # results.right_hand_landmarks, results.pose_landmarks
@@ -122,7 +136,7 @@ def detect_features(video_file, output_file):
 
 
 # Auto-detect number of CPU threads?
-THREADS = 8
+THREADS = 32
 lock = threading.Semaphore(THREADS)
 
 
@@ -221,11 +235,11 @@ def enumerate_files(input_folder):
         # <id> = user's ID
         # <sign> = word being signed
         # <attempt> = counter, starting at 00000001
-        print(f'Sign: {sign}')
-        print(f'User ID: {user_id}')
-        print(f'Attempt: {attempt_str}')
-        print(f'Session Start: {session_start}')
-        print()
+        # print(f'Sign: {sign}')
+        # print(f'User ID: {user_id}')
+        # print(f'Attempt: {attempt_str}')
+        # print(f'Session Start: {session_start}')
+        # print()
         output_filenames.append(f'{OUTPUT_DIRECTORY}{user_id}-{FILE_LABEL}/{sign}/'
                                 f'{session_start}/{user_id}.{sign}.{FILE_LABEL}.{attempt_str}.data')
 
@@ -253,7 +267,6 @@ if __name__ == '__main__':
     args.add_argument('--paddingDigits', type=int,
                       help='The number of padding digits to use when numbering attempts of a sign. If '
                            'not specified, defaults to 8.')
-
     parsed = args.parse_args()
 
     if parsed.noMark:
