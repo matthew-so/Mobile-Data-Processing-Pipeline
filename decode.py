@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument('--dest_dir', required=True, type=str)
     parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
     parser.add_argument('--log_file', type=str, default=None)
+    parser.add_argument('--only_print_signs', action='store_true')
     parser.add_argument('--num_threads', type=int, default=5)
     
     args = parser.parse_args()
@@ -51,8 +52,11 @@ def get_data_from_description(description):
     return data
 
 def clean_sign(sign):
-    sign = sign.replace(' / ', '_')
-    sign = sign.replace(' ', '_')
+    sign = sign.replace(' / ', '')
+    sign = sign.replace(' ', '')
+    sign = sign.replace('-', '')
+    sign = sign.replace('(', '')
+    sign = sign.replace(')', '')
     return sign
 
 def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath):
@@ -91,6 +95,7 @@ def get_uid(args, filename):
 def process_file(args, pool, pbar, filename):
     pbar.set_description('Processing Timestamps File: %s' % filename)
     results = []
+    signs = set()
 
     if filename.endswith("-timestamps.jpg"):
         image = Image.open(os.path.join(args.backup_dir, filename))
@@ -99,13 +104,17 @@ def process_file(args, pool, pbar, filename):
         description = get_image_description(exifdata) 
         data = get_data_from_description(description)
         uid, videopath = get_uid(args, filename)
-
-        for sign, recording_list in data.items():
-            for idx, recording in enumerate(recording_list):
-                thread_args = (args, uid, sign, idx, recording, videopath)
-                result = pool.apply_async(extract_clip_from_video, args = thread_args)
-                results.append(result)
-    return results
+        
+        if os.path.exists(videopath):
+            for sign, recording_list in data.items():
+                signs.add(clean_sign(sign))
+                if not args.only_print_signs:
+                    for idx, recording in enumerate(recording_list):
+                        thread_args = (args, uid, sign, idx, recording, videopath)
+                        result = pool.apply_async(extract_clip_from_video, args = thread_args)
+                        results.append(result)
+    
+    return results, signs
 
 if __name__ == "__main__":
     args = parse_args()
@@ -121,6 +130,7 @@ if __name__ == "__main__":
     pbar = tqdm(os.listdir(backup_dir))
     pool = Pool(args.num_threads)
     results = []
+    signs = set()
 
     for file in pbar:
         filename = os.fsdecode(file)
@@ -128,10 +138,12 @@ if __name__ == "__main__":
         if filename.endswith('.zip'):
             continue
 
-        file_results = process_file(args, pool, pbar, filename)
+        file_results, processed_signs = process_file(args, pool, pbar, filename)
         results.extend(file_results)
+        signs = signs.union(processed_signs)
     
     for result in results:
         result.get()
 
     pool.close()
+    print("Signs: ", signs)
