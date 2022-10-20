@@ -40,14 +40,13 @@ def get_image_description(exifdata):
         if tag == "ImageDescription":
             description = data
     return description
-    # print(description)
 
 def get_data_from_description(description):
     subbed = re.sub(r'file=(.*?),', r'"\1",', description)
     subbed = re.sub(r'videoStart=(.*?),', r'"\1",', subbed)
     subbed = re.sub(r'signStart=(.*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signEnd=(.*?)\)', r'"\1")', subbed)
-    
+    subbed = re.sub(r'signEnd=(.*?),', r'"\1",', subbed)
+    subbed = re.sub(r'isValid=(.*?)\)', r'"\1")', subbed)
     data = eval(subbed)
     return data
 
@@ -60,7 +59,10 @@ def clean_sign(sign):
     return sign
 
 def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath):
-    filename, video_start_time, sign_start_time, sign_end_time = recording
+    filename, video_start_time, sign_start_time, sign_end_time, isValid = recording
+    if isValid == "False":
+        return
+
     video_start_time_date = datetime.strptime(video_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_start_time_date = datetime.strptime(sign_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_end_time_date = datetime.strptime(sign_end_time+"000", '%Y_%m_%d_%H_%M_%S.%f')

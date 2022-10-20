@@ -1,7 +1,8 @@
 # Added input/output dirs
 split/
-split_test/
+split_tst/
 raw/
+raw_tst/
 logs/
 mediapipe/
 mediapipe_tst/
