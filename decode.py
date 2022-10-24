@@ -42,11 +42,12 @@ def get_image_description(exifdata):
     return description
 
 def get_data_from_description(description):
-    subbed = re.sub(r'file=(.*?),', r'"\1",', description)
-    subbed = re.sub(r'videoStart=(.*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signStart=(.*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signEnd=(.*?),', r'"\1",', subbed)
-    subbed = re.sub(r'isValid=(.*?)\)', r'"\1")', subbed)
+    subbed = re.sub(r'file=([^,]*?),', r'"\1",', description)
+    subbed = re.sub(r'videoStart=([^,]*?),', r'"\1",', subbed)
+    subbed = re.sub(r'signStart=([^,]*?),', r'"\1",', subbed)
+    subbed = re.sub(r'signEnd=([^,]*?), ', r'"\1",', subbed)
+    subbed = re.sub(r'isValid=([^,]*?)', r'\1', subbed)
+    
     data = eval(subbed)
     return data
 
@@ -59,10 +60,8 @@ def clean_sign(sign):
     return sign
 
 def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath):
-    filename, video_start_time, sign_start_time, sign_end_time, isValid = recording
-    if isValid == "False":
-        return
-
+    print(recording)
+    filename, video_start_time, sign_start_time, sign_end_time, is_error = recording
     video_start_time_date = datetime.strptime(video_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_start_time_date = datetime.strptime(sign_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_end_time_date = datetime.strptime(sign_end_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
@@ -77,7 +76,10 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
         try:
             video = video.resize(args.video_dim)
             new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
-            new.write_videofile(os.path.join(args.dest_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
+            output_dir = args.dest_dir
+            if is_error:
+                output_dir = os.path.join(args.dest_dir, 'error')
+            new.write_videofile(os.path.join(output_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
         except Exception as e:
             log_lock.acquire()
             with open(args.log_file, 'a') as f:
@@ -124,6 +126,9 @@ if __name__ == "__main__":
     
     if not os.path.exists(args.dest_dir):
         os.makedirs(args.dest_dir)
+
+    if not os.path.exists(os.path.join(args.dest_dir, 'error')):
+        os.makedirs(os.path.join(args.dest_dir, 'error'))
 
     if args.log_file is None:
         args.log_file = os.path.join('logs', 'decode_' + datetime.now().strftime('%Y-%m-%d_%H-%M'))
