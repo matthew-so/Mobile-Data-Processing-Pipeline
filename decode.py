@@ -42,14 +42,19 @@ def get_image_description(exifdata):
     return description
 
 def get_data_from_description(description):
-    subbed = re.sub(r'file=([^,]*?),', r'"\1",', description)
-    subbed = re.sub(r'videoStart=([^,]*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signStart=([^,]*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signEnd=([^,]*?), ', r'"\1",', subbed)
-    subbed = re.sub(r'isValid=([^,]*?)', r'\1', subbed)
+    is_valid_exists = "isValid" in description
+
+    subbed = re.sub(r'file=(.*?),', r'"\1",', description)
+    subbed = re.sub(r'videoStart=(.*?),', r'"\1",', subbed)
+    subbed = re.sub(r'signStart=(.*?),', r'"\1",', subbed)
     
+    if is_valid_exists:
+        subbed = re.sub(r'signEnd=(.*?),', r'"\1",', subbed)
+        subbed = re.sub(r'isValid=(.*?)\)', r'\1)', subbed)
+    else:
+        subbed = re.sub(r'signEnd=(.*?)\)', r'"\1")', subbed)
     data = eval(subbed)
-    return data
+    return data, is_valid_exists
 
 def clean_sign(sign):
     sign = sign.replace(' / ', '')
@@ -59,9 +64,14 @@ def clean_sign(sign):
     sign = sign.replace(')', '')
     return sign
 
-def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath):
+def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath, is_valid_exists):
     print(recording)
-    filename, video_start_time, sign_start_time, sign_end_time, is_error = recording
+    if is_valid_exists:
+        filename, video_start_time, sign_start_time, sign_end_time, is_valid = recording
+    else:
+        filename, video_start_time, sign_start_time, sign_end_time = recording
+        is_valid = True
+
     video_start_time_date = datetime.strptime(video_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_start_time_date = datetime.strptime(sign_start_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign_end_time_date = datetime.strptime(sign_end_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
@@ -77,7 +87,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
             video = video.resize(args.video_dim)
             new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
             output_dir = args.dest_dir
-            if is_error:
+            if not is_valid:
                 output_dir = os.path.join(args.dest_dir, 'error')
             new.write_videofile(os.path.join(output_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
         except Exception as e:
@@ -106,7 +116,7 @@ def process_file(args, pool, pbar, filename):
         exifdata = image.getexif()
 
         description = get_image_description(exifdata) 
-        data = get_data_from_description(description)
+        data, is_valid_exists = get_data_from_description(description)
         uid, videopath = get_uid(args, filename)
         
         if os.path.exists(videopath):
@@ -114,7 +124,7 @@ def process_file(args, pool, pbar, filename):
                 signs.add(clean_sign(sign))
                 if not args.only_print_signs:
                     for idx, recording in enumerate(recording_list):
-                        thread_args = (args, uid, sign, idx, recording, videopath)
+                        thread_args = (args, uid, sign, idx, recording, videopath, is_valid_exists)
                         result = pool.apply_async(extract_clip_from_video, args = thread_args)
                         results.append(result)
     
