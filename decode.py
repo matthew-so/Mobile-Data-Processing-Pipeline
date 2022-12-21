@@ -130,16 +130,21 @@ def process_file(args, pool, pbar, filename):
     
     return results, signs
 
-if __name__ == "__main__":
-    args = parse_args()
-    print("Args: ", args)
-    
+def make_missing_dirs(args):
     if not os.path.exists(args.dest_dir):
         os.makedirs(args.dest_dir)
 
     if not os.path.exists(os.path.join(args.dest_dir, 'error')):
         os.makedirs(os.path.join(args.dest_dir, 'error'))
-
+    
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    
+if __name__ == "__main__":
+    args = parse_args()
+    print("Args: ", args)
+    
+    make_missing_dirs(args)
     if args.log_file is None:
         args.log_file = os.path.join('logs', 'decode_' + datetime.now().strftime('%Y-%m-%d_%H-%M'))
     
