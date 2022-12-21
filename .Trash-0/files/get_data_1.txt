@@ -1,5 +1,0 @@
-    subbed = re.sub(r'file=([^,]*?),', r'"\1",', description)
-    subbed = re.sub(r'videoStart=([^,]*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signStart=([^,]*?),', r'"\1",', subbed)
-    subbed = re.sub(r'signEnd=([^,]*?),', r'"\1",', subbed)
-    subbed = re.sub(r'isValid=([^,]*?)', r'\1', subbed)
