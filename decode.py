@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument('--log_file', type=str, default=None)
     parser.add_argument('--only_print_signs', action='store_true')
     parser.add_argument('--num_threads', type=int, default=5)
+    parser.add_argument('--make_structured_dirs', action='store_true')
     
     args = parser.parse_args()
     return args
@@ -81,15 +82,25 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     
     start_seconds = sign_start_time_date - video_start_time_date
     end_seconds = sign_end_time_date - video_start_time_date
-    
+
     with mp.VideoFileClip(videopath) as video:
         try:
             video = video.resize(args.video_dim)
             new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
             output_dir = args.dest_dir
+            
             if not is_valid:
                 output_dir = os.path.join(args.dest_dir, 'error')
-            new.write_videofile(os.path.join(output_dir, f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"), verbose=False)
+
+            if args.make_structured_dirs:
+                video_filename = f"{video_start_time}-{recording_idx}.mp4"
+                output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")    
+                if not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+            else:
+                video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
+            
+            new.write_videofile(os.path.join(output_dir, video_filename), verbose=False)
         except Exception as e:
             log_lock.acquire()
             with open(args.log_file, 'a') as f:
