@@ -11,6 +11,7 @@ import argparse
 
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import moviepy.editor as mp
+import subprocess
 
 log_lock = Lock()
 
@@ -90,34 +91,27 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     if end_subclip - start_subclip < 1.5:
         start_subclip -= 0.5
         end_subclip += 0.5
-    
-    with mp.VideoFileClip(videopath) as video:
-        try:
-            video = video.resize(args.video_dim)
-            new = video.subclip(start_subclip, end_subclip)
-            output_dir = args.dest_dir
-            
-            if not is_valid:
-                output_dir = os.path.join(args.dest_dir, 'error')
 
-            if args.make_structured_dirs:
-                video_filename = f"{video_start_time}-{recording_idx}.mp4"
-                output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")    
-                if not os.path.exists(output_dir):
-                    os.makedirs(output_dir)
-            else:
-                print("Filename Struct: ", uid, sign, video_start_time, recording_idx) 
-                video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
-            
-            new.write_videofile(os.path.join(output_dir, video_filename), verbose=False)
-        except Exception as e:
-            log_lock.acquire()
-            with open(args.log_file, 'a') as f:
-                f.write('Error: %s\n' % e)
-                f.write('Sign: %s\n' % sign)
-                f.write('Video File Path: %s\n' % videopath)
-                f.write('\n')
-            log_lock.release()
+    output_dir = args.dest_dir
+
+    if not is_valid:
+        output_dir = os.path.join(args.dest_dir, 'error')
+
+    if args.make_structured_dirs:
+        video_filename = f"{video_start_time}-{recording_idx}.mp4"
+        output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+    else:
+        print("Filename Struct: ", uid, sign, video_start_time, recording_idx)
+        video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
+
+    output_file = os.path.join(output_dir, video_filename)
+
+    subprocess.run(["ffmpeg", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", videopath, "-vf",
+                    f"scale={args.video_dim[0]}:{args.video_dim[1]}", "-ss", start_subclip.strftime("%H:%M:%S.%f")[:-3],
+                    "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v", "hevc_nvenc", "-c:a", "copy",
+                    str(output_file)])
 
 def get_uid(args, filename):
     imagepath = os.path.join(args.backup_dir, filename)
