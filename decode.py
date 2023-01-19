@@ -61,12 +61,13 @@ def clean_sign(sign):
     sign = sign.replace(' / ', '')
     sign = sign.replace(' ', '')
     sign = sign.replace('-', '')
+    sign = sign.replace(',', '')
     sign = sign.replace('(', '')
     sign = sign.replace(')', '')
     return sign
 
 def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath, is_valid_exists):
-    print(recording)
+    print("Recording: ", recording)
     if is_valid_exists:
         filename, video_start_time, sign_start_time, sign_end_time, is_valid = recording
     else:
@@ -78,15 +79,22 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     sign_end_time_date = datetime.strptime(sign_end_time+"000", '%Y_%m_%d_%H_%M_%S.%f')
     sign = clean_sign(sign)
     
-    print(sign, filename, video_start_time, sign_start_time, sign_end_time)
+    print("Video Info: ", sign, filename, video_start_time, sign_start_time, sign_end_time)
     
     start_seconds = sign_start_time_date - video_start_time_date
     end_seconds = sign_end_time_date - video_start_time_date
 
+    start_subclip = start_seconds.seconds + start_seconds.microseconds / 1e6
+    end_subclip = end_seconds.seconds + end_seconds.microseconds / 1e6
+    
+    if end_subclip - start_subclip < 1.5:
+        start_subclip -= 0.5
+        end_subclip += 0.5
+    
     with mp.VideoFileClip(videopath) as video:
         try:
             video = video.resize(args.video_dim)
-            new = video.subclip(start_seconds.seconds + start_seconds.microseconds/1000000.0, end_seconds.seconds + end_seconds.microseconds/1000000.0)
+            new = video.subclip(start_subclip, end_subclip)
             output_dir = args.dest_dir
             
             if not is_valid:
@@ -98,6 +106,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
             else:
+                print("Filename Struct: ", uid, sign, video_start_time, recording_idx) 
                 video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
             
             new.write_videofile(os.path.join(output_dir, video_filename), verbose=False)

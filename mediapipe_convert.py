@@ -196,7 +196,7 @@ def enumerate_files(input_folder):
         if not acceptable:
             continue
 
-        suffix = file.split('.')[-2]
+        suffix = file.rsplit('.', maxsplit=2)[-2]
         if suffix.endswith(MARKING_SUFFIX):
             continue
 
@@ -204,7 +204,7 @@ def enumerate_files(input_folder):
         # <id> = user's ID
         # <sign> = word being signed
         # <start-time> = time the recording started
-        split = file.split('.')
+        split = file.rsplit('.', maxsplit=2)
         print(f'Split: {split}')
         if len(split) < 3:
             print(f'{file}: Skipped due to incorrect filename format')
@@ -214,22 +214,28 @@ def enumerate_files(input_folder):
         # user_id, session_start = split[0], split[1]
         # sign = '_'.join(split[2].split('_')[:-1])
 
-        user_id, sign, session_start = split[0].split('-')
+        # user_id, sign, session_start = split[0].split('-')
+        user_id, sign, _ = split[0].split('-')
 
         if user_id not in attempt_counts:
             attempt_counts[user_id] = dict()
 
-        if session_start not in attempt_counts[user_id]:
-            attempt_counts[user_id][session_start] = dict()
+        # if session_start not in attempt_counts[user_id]:
+        #     attempt_counts[user_id][session_start] = dict()
 
-        if sign not in attempt_counts[user_id][session_start]:
-            attempt_counts[user_id][session_start][sign] = 0
+        # if sign not in attempt_counts[user_id][session_start]:
+        #     attempt_counts[user_id][session_start][sign] = 0
 
-        attempt_counts[user_id][session_start][sign] += 1
+        if sign not in attempt_counts[user_id]:
+            attempt_counts[user_id][sign] = 0
+
+        # attempt_counts[user_id][session_start][sign] += 1
+        attempt_counts[user_id][sign] += 1
 
         input_filenames.append(f'{INPUT_DIRECTORY}{file}')
 
-        attempt_str = pad(attempt_counts[user_id][session_start][sign])
+        # attempt_str = pad(attempt_counts[user_id][session_start][sign])
+        attempt_str = pad(attempt_counts[user_id][sign])
         
         # <id>-singlesign/<sign>/<attempt>/<id>.singlesign.<sign>.<attempt>.data
         # <id> = user's ID
@@ -240,8 +246,10 @@ def enumerate_files(input_folder):
         # print(f'Attempt: {attempt_str}')
         # print(f'Session Start: {session_start}')
         # print()
+        # output_filenames.append(f'{OUTPUT_DIRECTORY}{user_id}-{FILE_LABEL}/{sign}/'
+        #                         f'{session_start}/{user_id}.{sign}.{FILE_LABEL}.{attempt_str}.data')
         output_filenames.append(f'{OUTPUT_DIRECTORY}{user_id}-{FILE_LABEL}/{sign}/'
-                                f'{session_start}/{user_id}.{sign}.{FILE_LABEL}.{attempt_str}.data')
+                                f'{user_id}.{sign}.{FILE_LABEL}.{attempt_str}.data')
 
     # '1-2022-05-singlesign'
     # ['test_hello_2022.09.10.mp4'], ['./test-singlesign/hello/2022.09.10/test.singlesign.hello.00000001.data']
