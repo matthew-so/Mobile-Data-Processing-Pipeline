@@ -9,6 +9,8 @@ import re
 import os
 import argparse
 
+import subprocess
+
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import moviepy.editor as mp
 import subprocess
@@ -24,6 +26,7 @@ def parse_args():
     parser.add_argument('--only_print_signs', action='store_true')
     parser.add_argument('--num_threads', type=int, default=5)
     parser.add_argument('--make_structured_dirs', action='store_true')
+    parser.add_argument('--use_cuda')
     
     args = parser.parse_args()
     return args
@@ -98,20 +101,30 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
         output_dir = os.path.join(args.dest_dir, 'error')
 
     if args.make_structured_dirs:
-        video_filename = f"{video_start_time}-{recording_idx}.mp4"
-        output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")
+        video_filename = f"{sign_start_time}-{recording_idx}.mp4"
+        output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")    
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
     else:
-        print("Filename Struct: ", uid, sign, video_start_time, recording_idx)
+        output_dir = args.dest_dir
+        print("Filename Struct: ", uid, sign, video_start_time, recording_idx) 
         video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
 
-    output_file = os.path.join(output_dir, video_filename)
+    time = end_subclip - start_subclip
+    full_filename = os.path.join(output_dir, video_filename)
 
-    subprocess.run(["ffmpeg", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", videopath, "-vf",
-                    f"scale={str(args.video_dim[0])}:{str(args.video_dim[1])}", "-ss",
-                    start_subclip.strftime("%H:%M:%S.%f")[:-3], "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v",
-                    "hevc_nvenc", "-c:a", "copy", str(output_file)])
+    if args.use_cuda:
+        subprocess.run(["ffmpeg", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", videopath, "-vf",
+                        f"scale={str(args.video_dim[0])}:{str(args.video_dim[1])}", "-ss",
+                        start_subclip.strftime("%H:%M:%S.%f")[:-3], "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v",
+                        "hevc_nvenc", "-c:a", "copy", str(full_filename)])
+    else:
+        args = (f'ffmpeg -y -ss {start_subclip:.2f} -i {videopath} ' 
+                f'-t {time:.2f} -c copy {full_filename}')
+
+        # Call ffmpeg directly
+        print(f'$ {args}')
+        subprocess.run(args, shell=True, check=True)
 
 def get_uid(args, filename):
     imagepath = os.path.join(args.backup_dir, filename)
@@ -139,7 +152,7 @@ def process_file(args, pool, pbar, filename):
                 if not args.only_print_signs:
                     for idx, recording in enumerate(recording_list):
                         thread_args = (args, uid, sign, idx, recording, videopath, is_valid_exists)
-                        result = pool.apply_async(extract_clip_from_video, args = thread_args)
+                        result = pool.apply_async(extract_clip_from_video, args=thread_args)
                         results.append(result)
     
     return results, signs
