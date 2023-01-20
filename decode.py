@@ -120,7 +120,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
                         "hevc_nvenc", "-c:a", "copy", str(full_filename)])
     else:
         args = (f'ffmpeg -y -ss {start_subclip:.2f} -i {videopath} ' 
-                f'-t {time:.2f} -c copy {full_filename}')
+                f'-t {time:.2f} -c:v libx264 {full_filename}')
 
         # Call ffmpeg directly
         print(f'$ {args}')
