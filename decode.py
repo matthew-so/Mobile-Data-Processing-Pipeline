@@ -8,6 +8,7 @@ from collections import defaultdict
 import re
 import os
 import argparse
+import time
 
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import moviepy.editor as mp
@@ -16,7 +17,9 @@ log_lock = Lock()
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backup_dir', required=True, type=str)
+    
+    parser.add_argument('--job_array_num', required=True, type=int)
+    parser.add_argument('--input_dir', required=True, type=str)
     parser.add_argument('--dest_dir', required=True, type=str)
     parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
     parser.add_argument('--log_file', type=str, default=None)
@@ -120,7 +123,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
             log_lock.release()
 
 def get_uid(args, filename):
-    imagepath = os.path.join(args.backup_dir, filename)
+    imagepath = os.path.join(args.input_dir, filename)
     videopath = re.sub(r'-timestamps.jpg', r'.mp4', imagepath)
     _, videoname = os.path.split(videopath)
     uid = videoname.split('-')[0]
@@ -132,7 +135,7 @@ def process_file(args, pool, pbar, filename):
     signs = set()
 
     if filename.endswith("-timestamps.jpg"):
-        image = Image.open(os.path.join(args.backup_dir, filename))
+        image = Image.open(os.path.join(args.input_dir, filename))
         exifdata = image.getexif()
 
         description = get_image_description(exifdata) 
@@ -164,12 +167,17 @@ if __name__ == "__main__":
     args = parse_args()
     print("Args: ", args)
     
+    time.sleep(args.job_array_num)
+    
     make_missing_dirs(args)
     if args.log_file is None:
         args.log_file = os.path.join('logs', 'decode_' + datetime.now().strftime('%Y-%m-%d_%H-%M'))
     
-    backup_dir = os.fsencode(args.backup_dir)
-    pbar = tqdm(os.listdir(backup_dir))
+    input_dir = os.fsencode(args.input_dir)
+    with open(f'/data/sign_language_videos/batches/batch_{args.job_array_num}.txt') as fin:
+        assigned_videos = fin.read().splitlines()
+        
+    pbar = tqdm(assigned_videos)
     pool = Pool(args.num_threads)
     results = []
     signs = set()
