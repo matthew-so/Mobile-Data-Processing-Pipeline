@@ -109,9 +109,9 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     output_file = os.path.join(output_dir, video_filename)
 
     subprocess.run(["ffmpeg", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", videopath, "-vf",
-                    f"scale={args.video_dim[0]}:{args.video_dim[1]}", "-ss", start_subclip.strftime("%H:%M:%S.%f")[:-3],
-                    "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v", "hevc_nvenc", "-c:a", "copy",
-                    str(output_file)])
+                    f"scale={str(args.video_dim[0])}:{str(args.video_dim[1])}", "-ss",
+                    start_subclip.strftime("%H:%M:%S.%f")[:-3], "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v",
+                    "hevc_nvenc", "-c:a", "copy", str(output_file)])
 
 def get_uid(args, filename):
     imagepath = os.path.join(args.backup_dir, filename)
