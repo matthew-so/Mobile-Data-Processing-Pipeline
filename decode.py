@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--dest_dir', required=True, type=str)
     parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
     parser.add_argument('--log_file', type=str, default=None)
-    parser.add_argument('--only_print_signs', action='store_true')
+    parser.add_argument('--skip_extraction', action='store_true')
     parser.add_argument('--num_threads', type=int, default=5)
     parser.add_argument('--make_structured_dirs', action='store_true')
     parser.add_argument('--use_cuda')
@@ -133,10 +133,20 @@ def get_uid(args, filename):
     uid = videoname.split('-')[0]
     return uid, videopath
 
-def process_file(args, pool, pbar, filename):
+def count_recording(sign, recording, is_valid_exists, recording_count):
+    if is_valid_exists:
+        _, _, _, _, is_valid = recording
+        if is_valid:
+            recording_count[sign] += 1
+    else:
+        recording_count[sign] += 1
+    return recording_count
+
+def process_file(args, pool, pbar, filename, results, signs, recording_count):
     pbar.set_description('Processing Timestamps File: %s' % filename)
-    results = []
-    signs = set()
+    # results = []
+    # signs = set()
+    # recording_count = 0
 
     if filename.endswith("-timestamps.jpg"):
         image = Image.open(os.path.join(args.backup_dir, filename))
@@ -149,13 +159,14 @@ def process_file(args, pool, pbar, filename):
         if os.path.exists(videopath):
             for sign, recording_list in data.items():
                 signs.add(clean_sign(sign))
-                if not args.only_print_signs:
-                    for idx, recording in enumerate(recording_list):
+                for idx, recording in enumerate(recording_list):
+                    count_recording(sign, recording, is_valid_exists, recording_count)
+                    if not args.skip_extraction:
                         thread_args = (args, uid, sign, idx, recording, videopath, is_valid_exists)
                         result = pool.apply_async(extract_clip_from_video, args=thread_args)
                         results.append(result)
     
-    return results, signs
+    # return results, signs, recording_count
 
 def make_missing_dirs(args):
     if not os.path.exists(args.dest_dir):
@@ -178,21 +189,27 @@ if __name__ == "__main__":
     backup_dir = os.fsencode(args.backup_dir)
     pbar = tqdm(os.listdir(backup_dir))
     pool = Pool(args.num_threads)
+    
     results = []
     signs = set()
+    recording_count = defaultdict(int)
 
     for file in pbar:
         filename = os.fsdecode(file)
 
         if filename.endswith('.zip'):
             continue
-
-        file_results, processed_signs = process_file(args, pool, pbar, filename)
-        results.extend(file_results)
-        signs = signs.union(processed_signs)
+        
+        process_file(args, pool, pbar, filename, results, signs, recording_count)
+        # file_results, processed_signs, next_recording_count = process_file(args, pool, pbar, filename)
+        # results.extend(file_results)
+        # signs = signs.union(processed_signs)
+        # recording_count += next_recording_count
     
     for result in results:
         result.get()
 
     pool.close()
     print("Signs: ", signs)
+    print("Recording Count (Total): ", sum(recording_count.values()))
+    print("Recording Count (by Sign): ", recording_count)
