@@ -17,9 +17,6 @@ import moviepy.editor as mp
 import subprocess
 
 log_lock = Lock()
-dict_lock = Lock()
-
-session_id_to_raw_map = {}
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -75,7 +72,7 @@ def clean_sign(sign):
     sign = sign.replace(')', '')
     return sign
 
-def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath, is_valid_exists, session_id):
+def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath, is_valid_exists):
     print("Recording: ", recording)
     if is_valid_exists:
         filename, video_start_time, sign_start_time, sign_end_time, is_valid = recording
@@ -160,9 +157,6 @@ def process_file(args, pool, pbar, filename, results, signs, recording_count):
         description = get_image_description(exifdata)
         data, is_valid_exists = get_data_from_description(description)
         uid, videopath = get_uid(args, filename)
-        
-        if args.debug:
-            session_id_to_raw_map[session_id] = filename
 
         if os.path.exists(videopath):
             for sign, recording_list in data.items():
