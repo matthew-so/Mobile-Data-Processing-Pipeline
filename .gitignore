@@ -12,6 +12,8 @@ __pycache__/
 # Temp
 hmm/
 
-# Ignore files
+# Files to leave out
 *.json
+*.txt
+*.csv
 

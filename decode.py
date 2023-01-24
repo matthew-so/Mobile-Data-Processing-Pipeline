@@ -10,8 +10,11 @@ import os
 import argparse
 import json
 
+import subprocess
+
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import moviepy.editor as mp
+import subprocess
 
 log_lock = Lock()
 dict_lock = Lock()
@@ -24,10 +27,11 @@ def parse_args():
     parser.add_argument('--dest_dir', required=True, type=str)
     parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
     parser.add_argument('--log_file', type=str, default=None)
-    parser.add_argument('--only_print_signs', action='store_true')
+    parser.add_argument('--skip_extraction', action='store_true')
     parser.add_argument('--num_threads', type=int, default=5)
     parser.add_argument('--make_structured_dirs', action='store_true')
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--use_cuda', action='store_true')
     
     args = parser.parse_args()
     return args
@@ -95,41 +99,37 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     if end_subclip - start_subclip < 1.5:
         start_subclip -= 0.5
         end_subclip += 0.5
-    
-    with mp.VideoFileClip(videopath) as video:
-        try:
-            video = video.resize(args.video_dim)
-            new = video.subclip(start_subclip, end_subclip)
-            output_dir = args.dest_dir
-            
-            if not is_valid:
-                output_dir = os.path.join(args.dest_dir, 'error')
 
-            if args.make_structured_dirs:
-                if args.debug:
-                    video_filename = f"{video_start_time}-{recording_idx}-{session_id}.mp4"
-                else:
-                    video_filename = f"{video_start_time}-{recording_idx}.mp4"
-                output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")
-                if not os.path.exists(output_dir):
-                    os.makedirs(output_dir)
-            else:
-                print("Filename Struct: ", uid, sign, video_start_time, recording_idx, session_id)
-                if args.debug:
-                    video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}-{session_id}.mp4"
-                else:
-                    video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
-            
-            new.write_videofile(os.path.join(output_dir, video_filename), verbose=False)
+    output_dir = args.dest_dir
 
-        except Exception as e:
-            log_lock.acquire()
-            with open(args.log_file, 'a') as f:
-                f.write('Error: %s\n' % e)
-                f.write('Sign: %s\n' % sign)
-                f.write('Video File Path: %s\n' % videopath)
-                f.write('\n')
-            log_lock.release()
+    if not is_valid:
+        output_dir = os.path.join(args.dest_dir, 'error')
+
+    if args.make_structured_dirs:
+        video_filename = f"{sign_start_time}-{recording_idx}.mp4"
+        output_dir = os.path.join(args.dest_dir, f"{uid}", f"{sign}")    
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+    else:
+        output_dir = args.dest_dir
+        print("Filename Struct: ", uid, sign, video_start_time, recording_idx) 
+        video_filename = f"{uid}-{sign}-{video_start_time}-{recording_idx}.mp4"
+
+    time = end_subclip - start_subclip
+    full_filename = os.path.join(output_dir, video_filename)
+
+    if args.use_cuda:
+        subprocess.run(["ffmpeg", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", videopath, "-vf",
+                        f"scale={str(args.video_dim[0])}:{str(args.video_dim[1])}", "-ss",
+                        start_subclip.strftime("%H:%M:%S.%f")[:-3], "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v",
+                        "hevc_nvenc", "-c:a", "copy", str(full_filename)])
+    else:
+        args = (f'ffmpeg -y -ss {start_subclip:.2f} -i {videopath} ' 
+                f'-t {time:.2f} -c:v libx264 {full_filename}')
+
+        # Call ffmpeg directly
+        print(f'$ {args}')
+        subprocess.run(args, shell=True, check=True)
 
 def get_uid(args, filename):
     imagepath = os.path.join(args.backup_dir, filename)
@@ -138,10 +138,20 @@ def get_uid(args, filename):
     uid = videoname.split('-')[0]
     return uid, videopath
 
-def process_file(args, pool, pbar, filename, session_id):
+def count_recording(sign, recording, is_valid_exists, recording_count):
+    if is_valid_exists:
+        _, _, _, _, is_valid = recording
+        if is_valid:
+            recording_count[sign] += 1
+    else:
+        recording_count[sign] += 1
+    return recording_count
+
+def process_file(args, pool, pbar, filename, results, signs, recording_count):
     pbar.set_description('Processing Timestamps File: %s' % filename)
-    results = []
-    signs = set()
+    # results = []
+    # signs = set()
+    # recording_count = 0
 
     if filename.endswith("-timestamps.jpg"):
         image = Image.open(os.path.join(args.backup_dir, filename))
@@ -157,13 +167,14 @@ def process_file(args, pool, pbar, filename, session_id):
         if os.path.exists(videopath):
             for sign, recording_list in data.items():
                 signs.add(clean_sign(sign))
-                if not args.only_print_signs:
-                    for idx, recording in enumerate(recording_list):
-                        thread_args = (args, uid, sign, idx, recording, videopath, is_valid_exists, session_id)
-                        result = pool.apply_async(extract_clip_from_video, args = thread_args)
+                for idx, recording in enumerate(recording_list):
+                    count_recording(sign, recording, is_valid_exists, recording_count)
+                    if not args.skip_extraction:
+                        thread_args = (args, uid, sign, idx, recording, videopath, is_valid_exists)
+                        result = pool.apply_async(extract_clip_from_video, args=thread_args)
                         results.append(result)
     
-    return results, signs
+    # return results, signs, recording_count
 
 def make_missing_dirs(args):
     if not os.path.exists(args.dest_dir):
@@ -187,30 +198,26 @@ if __name__ == "__main__":
     pbar = tqdm(os.listdir(backup_dir))
     pool = Pool(args.num_threads)
     
-    session_id = 0
     results = []
     signs = set()
-    
+    recording_count = defaultdict(int)
+
     for file in pbar:
         filename = os.fsdecode(file)
 
         if filename.endswith('.zip'):
             continue
         
-        if args.debug:
-            session_id += 1
-
-        file_results, processed_signs = process_file(args, pool, pbar, filename, session_id)
-        results.extend(file_results)
-        signs = signs.union(processed_signs)
+        process_file(args, pool, pbar, filename, results, signs, recording_count)
+        # file_results, processed_signs, next_recording_count = process_file(args, pool, pbar, filename)
+        # results.extend(file_results)
+        # signs = signs.union(processed_signs)
+        # recording_count += next_recording_count
     
     for result in results:
         result.get()
 
     pool.close()
     print("Signs: ", signs)
-
-    if args.debug:
-        with open('raw_file_session_id_map.json', 'w', encoding='utf-8') as f:
-            json.dump(session_id_to_raw_map, f)
-
+    print("Recording Count (Total): ", sum(recording_count.values()))
+    print("Recording Count (by Sign): ", recording_count)
