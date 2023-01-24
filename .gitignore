@@ -1,12 +1,9 @@
 # Added input/output dirs
-split/
-split_tst/
-raw/
-raw_tst/
+split*/
+raw*/
 demo/
 logs/
-mediapipe/
-mediapipe_tst/
+mediapipe*/
 
 # Housekeeping Dirs
 .vscode/
@@ -14,3 +11,9 @@ __pycache__/
 
 # Temp
 hmm/
+
+# Files to leave out
+*.json
+*.txt
+*.csv
+
