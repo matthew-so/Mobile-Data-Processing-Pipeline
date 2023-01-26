@@ -12,10 +12,6 @@ import json
 
 import subprocess
 
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-import moviepy.editor as mp
-import subprocess
-
 log_lock = Lock()
 
 def parse_args():
@@ -93,9 +89,8 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     start_subclip = start_seconds.seconds + start_seconds.microseconds / 1e6
     end_subclip = end_seconds.seconds + end_seconds.microseconds / 1e6
     
-    if end_subclip - start_subclip < 1.5:
-        start_subclip -= 0.5
-        end_subclip += 0.5
+    start_subclip -= 0.5
+    end_subclip += 0.5
 
     output_dir = args.dest_dir
 

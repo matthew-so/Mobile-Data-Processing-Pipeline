@@ -12,7 +12,6 @@ joblib==1.2.0
 kiwisolver==1.4.4
 matplotlib==3.5.3
 mediapipe==0.8.11
-moviepy==1.0.3
 multiprocess==0.70.13
 numpy==1.21.4
 opencv-contrib-python==4.6.0.66
