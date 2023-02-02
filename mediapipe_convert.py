@@ -172,7 +172,7 @@ def df_multithreaded(input_filenames, output_filenames):
     print('Feature extraction complete')
 
 
-def enumerate_files(input_folder):
+def enumerate_files(input_folder, processTenSign=False):
     input_filenames, output_filenames = list(), list()
 
     # Keeps track of the attempt number for each user/sign
@@ -195,7 +195,7 @@ def enumerate_files(input_folder):
 
         if not acceptable:
             continue
-
+        
         suffix = file.rsplit('.', maxsplit=2)[-2]
         if suffix.endswith(MARKING_SUFFIX):
             continue
@@ -275,6 +275,8 @@ if __name__ == '__main__':
     args.add_argument('--paddingDigits', type=int,
                       help='The number of padding digits to use when numbering attempts of a sign. If '
                            'not specified, defaults to 8.')
+    args.add_argument('--processTenSign', action='store_true',
+                      help='If provided, will assume input directory contains 10 sign videos.')
     parsed = args.parse_args()
 
     if parsed.noMark:
@@ -296,7 +298,7 @@ if __name__ == '__main__':
     if parsed.paddingDigits is not None:
         PADDING_DIGITS = parsed.paddingDigits
 
-    input_files, output_files = enumerate_files(INPUT_DIRECTORY)
+    input_files, output_files = enumerate_files(INPUT_DIRECTORY, processTenSign=parsed.processTenSign)
 
     start_time = time.time()
     df_multithreaded(input_files, output_files)

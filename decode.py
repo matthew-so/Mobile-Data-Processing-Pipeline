@@ -23,7 +23,6 @@ def parse_args():
     parser.add_argument('--skip_extraction', action='store_true')
     parser.add_argument('--num_threads', type=int, default=5)
     parser.add_argument('--make_structured_dirs', action='store_true')
-    parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     
     args = parser.parse_args()
@@ -116,7 +115,7 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
                         start_subclip.strftime("%H:%M:%S.%f")[:-3], "-t", end_subclip.strftime("%H:%M:%S.%f")[:-3], "-c:v",
                         "hevc_nvenc", "-c:a", "copy", str(full_filename)])
     else:
-        args = (f'ffmpeg -y -ss {start_subclip:.2f} -i {videopath} ' 
+        args = (f'ffmpeg -y -nostdin -ss {start_subclip:.2f} -i {videopath} ' 
                 f'-t {time:.2f} -c:v libx264 {full_filename}')
 
         # Call ffmpeg directly
@@ -198,10 +197,6 @@ if __name__ == "__main__":
             continue
         
         process_file(args, pool, pbar, filename, results, signs, recording_count)
-        # file_results, processed_signs, next_recording_count = process_file(args, pool, pbar, filename)
-        # results.extend(file_results)
-        # signs = signs.union(processed_signs)
-        # recording_count += next_recording_count
     
     for result in results:
         result.get()
