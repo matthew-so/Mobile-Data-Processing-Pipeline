@@ -13,7 +13,6 @@ __pycache__/
 # hmm/
 
 # HMM Dirs
-sbhmm/
 data/
 hresults/
 lists/
