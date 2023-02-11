@@ -26,7 +26,6 @@ dict*
 wordList*
 
 # Files to leave out
-*.json
 *.txt
 *.csv
 *.jl
@@ -35,6 +34,7 @@ wordList*
 *.mlf
 *.hed
 *.hdman
+raw_file_session_id_map.json
 mediapipe_count.py
 .DS_Store
 
