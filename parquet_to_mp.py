@@ -3,6 +3,8 @@ import os
 import random
 import math
 import json
+import argparse
+import pickle
 
 from glob import glob
 from tqdm import tqdm
@@ -12,6 +14,7 @@ SEED = 5627
 PADDING_DIGITS = 8
 PARQUET_DIR = '/data/kaggle-data/competition-data-train/'
 TRAIN_CSV = '/data/kaggle-data/competition-data-train/train.csv'
+FIVE_SIGNS = ['yellow', 'who', 'listen', 'bye', 'cat']
 
 # Globals
 data_dict = {}
@@ -21,8 +24,10 @@ def add_metadata(participant, sign):
         data_dict[participant] = {}
 
     if sign not in data_dict[participant]:
-        data_dict[participant][sign] = {}
-
+        data_dict[participant][sign] = []
+    
+    data_dict[participant][sign].append({})
+    
 def ingest_landmark(row, min_frame, participant, sign):
     lm_type = row.type
     if row.type == "face":
@@ -37,7 +42,7 @@ def ingest_landmark(row, min_frame, participant, sign):
 
     lm_index = str(row.landmark_index)
     frame = str(row.frame - min_frame)
-    landmark_dict = data_dict[participant][sign]
+    landmark_dict = data_dict[participant][sign][-1]
 
     if frame not in landmark_dict:
         landmark_dict[frame] = {}
@@ -81,11 +86,10 @@ def get_train_data():
     signs = list(set(train_csv.sign.tolist()))
     signs.sort()
 
-    random.seed(SEED)
-    five_signs = random.sample(signs, 5)
-    
-    train_df = train_csv.loc[train_csv['sign'].isin(five_signs)]
+    print("Total Train Set Size: ", len(train_csv))
+    train_df = train_csv.loc[train_csv['sign'].isin(FIVE_SIGNS)]
     train_df = train_df[['path', 'participant_id', 'sign']]
+    print("Filtered Train Set Size: ", len(train_df))
     return train_df
 
 def create_mp_files():
@@ -93,36 +97,83 @@ def create_mp_files():
         existing_len = len(str(num))
         return f'{(PADDING_DIGITS - existing_len) * "0"}{num}'
     
-    attempt_counts = {}
     for participant in data_dict:
-        if participant not in attempt_counts:
-            attempt_counts[participant] = {}
-
         for sign in data_dict[participant]:
-            if sign not in attempt_counts[participant]:
-                attempt_counts[participant][sign] = 0
-            
-            attempt_counts[participant][sign] += 1
-            attempt_count_str = pad(attempt_counts[participant][sign])
+            for i, attempt in enumerate(data_dict[participant][sign]):
+                attempt_count_str = pad(i + 1)
+                
+                filename_components = [participant, sign, 'singlesign', attempt_count_str, 'data']
+                filename = '.'.join(filename_components)
+                
+                mp_dir = os.path.join('mediapipe_parquet', participant + '-singlesign', sign)
+                if not os.path.exists(mp_dir):
+                    os.makedirs(mp_dir)
+                
+                mp_filepath = os.path.join(mp_dir, filename)
+                with open(mp_filepath, 'w') as f:
+                    json.dump(attempt, f, indent=4)
 
-            filename_components = [participant, sign, 'singlesign', attempt_count_str, 'data']
-            filename = '.'.join(filename_components)
-            
-            mp_dir = os.path.join('mediapipe_parquet', participant + '-singlesign', sign)
-            if not os.path.exists(mp_dir):
-                os.makedirs(mp_dir)
-            
-            mp_filepath = os.path.join(mp_dir, filename)
-            dump_dict = data_dict[participant][sign]
-            with open(mp_filepath, 'w') as f:
-                json.dump(dump_dict, f, indent=4)
+def add_user_sign_count(row, count_dict):
+    if row.participant_id not in count_dict:
+        count_dict[row.participant_id] = {}
+
+    if row.sign not in count_dict[row.participant_id]:
+        count_dict[row.participant_id][row.sign] = 0
+
+    count_dict[row.participant_id][row.sign] += 1
+
+def add_sign_count(row, count_dict):
+    if row.sign not in count_dict:
+        count_dict[row.sign] = 0
+
+    count_dict[row.sign] += 1
+
+def print_user_sign_counts():
+    df = pd.read_csv(TRAIN_CSV)
+    count_dict = {}
+    df.apply(add_user_sign_count, axis=1, args=(count_dict,))
+    
+    for participant in count_dict:
+        print(f'Participant: {participant}')
+        for sign in count_dict[participant]:
+            print(f'\t{sign}: {count_dict[participant][sign]}')
+
+def print_sign_counts():
+    df = pd.read_csv(TRAIN_CSV)
+    count_dict = {}
+    df.apply(add_sign_count, axis=1, args=(count_dict,))
+    
+    for participant in count_dict:
+        print(f'Participant: {participant}')
+        for sign in count_dict[participant]:
+            print(f'\t{sign}: {count_dict[participant][sign]}')
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--use_pickle_file', action='store_true')
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    train_df = get_train_data()
-    ingest_parquet_files(train_df)
-    create_mp_files()
+    args = parse_args()
 
-    # participant = list(data_dict.keys())[0]
-    # sign = list(data_dict[participant].keys())[0]
-    # print(data_dict[participant][sign])
+    if args.use_pickle_file:
+        with open('data_dict.pickle', 'rb') as f:
+            data_dict = pickle.load(f)
+    else:
+        train_df = get_train_data()
+        ingest_parquet_files(train_df)
+        
+        # total_signs = 0
+        # for participant in data_dict:
+        #     print(f'Participant {participant}')
+        #     for sign in data_dict[participant]:
+        #         print(f'\t{sign}: {len(data_dict[participant][sign])}')
+        #         total_signs += len(data_dict[participant][sign])
+        # print(f'Total signs: {total_signs}')
+    
+    create_mp_files()
+    
+    if not args.use_pickle_file:
+        with open('data_dict.pickle', 'wb') as f:
+            pickle.dump(data_dict, f)
 

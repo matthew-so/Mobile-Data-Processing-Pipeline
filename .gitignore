@@ -34,6 +34,7 @@ wordList*
 *.mlf
 *.hed
 *.hdman
+*.pickle
 raw_file_session_id_map.json
 mediapipe_count.py
 .DS_Store
