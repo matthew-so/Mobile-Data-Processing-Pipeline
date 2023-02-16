@@ -3,7 +3,7 @@
 python3 driver.py \
     --test_type test_on_train \
     --features_file configs/features_sign.json \
-    --train_iters 8 \
+    --train_iters 150 \
     --hmm_insertion_penalty -200 \
     #--cv_parallel \
     #--parallel_jobs 32

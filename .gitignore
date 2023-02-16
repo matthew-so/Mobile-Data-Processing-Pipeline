@@ -13,7 +13,7 @@ __pycache__/
 # hmm/
 
 # HMM Dirs
-data/
+data*/
 hresults/
 lists/
 logs/
@@ -43,6 +43,7 @@ mediapipe_count.py
 __pycache__/
 *.py[cod]
 *$py.class
+*.py.swp
 
 # C extensions
 *.so

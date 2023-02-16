@@ -62,7 +62,7 @@ def create_ark_files(features_config: dict, users: list, phrase_len: list, verbo
         Whether to print output during process.
     """
 
-    ark_dir = os.path.join('data', 'ark')
+    ark_dir = os.path.join('data_new', 'ark')
     
     if os.path.exists(ark_dir):
         shutil.rmtree(ark_dir)

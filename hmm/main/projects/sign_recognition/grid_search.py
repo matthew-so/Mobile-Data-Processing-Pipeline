@@ -97,7 +97,7 @@ def run_command(base_command, results_filepath, args, tup):
         f.write('=====================\n')
     
     command = base_command
-    command += ' \\\n\t--grid_results_file ' + results_filepath
+    #command += ' \\\n\t--grid_results_file ' + results_filepath
     command += ' \\\n\t--n_splits {n}'.format(n=n_folds)
     command += ' \\\n\t--hmm_step_type {s}'.format(s=hmm_step_type)
     command += ' \\\n\t--variance {f}'.format(f=variance)
