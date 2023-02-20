@@ -265,7 +265,7 @@ def _generate_mlf_file(isFingerspelling: bool) -> None:
     dataset.
     """
 
-    htk_filepaths = os.path.join('data', 'htk', '*.htk')
+    htk_filepaths = os.path.join('data_new', 'htk', '*.htk')
     filenames = glob.glob(htk_filepaths)
 
     with open('all_labels.mlf', 'w') as f:

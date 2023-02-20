@@ -98,7 +98,8 @@ def crossValVerificationFold(train_data: list, test_data: list, args: object, fo
         create_data_lists([os.path.join(currDataFolder, "htk", i+".htk") for i in curr_train_files], [
                     os.path.join(currDataFolder, "htk", i+".htk") for i in curr_test_files], args.phrase_len, fold)
 
-        train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""))
+        train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""), 
+                features_file=args.features_file)
         if args.verification_method == "zahoor":
             curr_average_ll_sign = return_average_ll_per_sign(args.end, args.hmm_insertion_penalty, 
                                                             args.beam_threshold, fold=os.path.join(str(fold), ""))
@@ -144,7 +145,8 @@ def crossValVerificationFold(train_data: list, test_data: list, args: object, fo
     
     create_data_lists([os.path.join(currDataFolder, "htk", i+".htk") for i in trainFiles], [
                     os.path.join(currDataFolder, "htk", i+".htk") for i in testFiles], args.phrase_len, fold)
-    train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""))
+    train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""),
+            features_file=args.features_file)
     if args.verification_method == "zahoor":
         positive, negative, false_positive, false_negative, test_log_likelihoods = verify_zahoor(args.end, args.hmm_insertion_penalty, classifier, 
                                                                         args.beam_threshold, fold=os.path.join(str(fold), ""))
@@ -197,7 +199,7 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
                 args.parallel_jobs, args.parallel_classifier_training, os.path.join(str(fold), ""))
     else:
         if run_train: train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""),
-                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, gmm_pattern=args.gmm_pattern)
+                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, gmm_pattern=args.gmm_pattern, features_file=args.features_file)
         test(args.start, args.end, args.method, args.hmm_insertion_penalty, fold=os.path.join(str(fold), ""))
 
     if args.train_sbhmm:
@@ -269,7 +271,7 @@ def main():
         default='single'
     )
     parser.add_argument('--gmm_pattern', type=str, default='middle')    
-    parser.add_argument('--gmm_mix', type=int, default=None)    
+    parser.add_argument('--gmm_mix', type=int, default=None)
 
     #Arguments for SBHMM
     parser.add_argument('--train_sbhmm', action='store_true')    
@@ -357,7 +359,9 @@ def main():
             testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty,
                     args.parallel_jobs, args.parallel_classifier_training)
         else:
-            train(args.train_iters, args.mean, args.variance, args.transition_prob, is_triletter=args.model_type=="triletter")
+            train(args.train_iters, args.mean, args.variance, args.transition_prob, 
+                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, gmm_pattern=args.gmm_pattern,
+                is_triletter=args.model_type=="triletter", features_file=args.features_file)
             if args.method == "recognition":
                 test(args.start, args.end, args.method, args.hmm_insertion_penalty, is_triletter=args.model_type=="triletter")
             elif args.method == "verification":
@@ -525,7 +529,7 @@ def main():
                 testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty, 
                         args.parallel_jobs, args.parallel_classifier_training)
             else:
-                train(args.train_iters, args.mean, args.variance, args.transition_prob)
+                train(args.train_iters, args.mean, args.variance, args.transition_prob, features_file=args.features_file)
                 test(args.start, args.end, args.method, args.hmm_insertion_penalty)
             
             results = get_results(hresults_file)
@@ -579,7 +583,7 @@ def main():
             testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty, 
                     args.parallel_jobs, args.parallel_classifier_training)
         else:
-            train(args.train_iters, args.mean, args.variance, args.transition_prob)
+            train(args.train_iters, args.mean, args.variance, args.transition_prob, features_file=args.features_file)
             if args.method == "recognition":
                 test(args.start, args.end, args.method, args.hmm_insertion_penalty)
             elif args.method == "verification":

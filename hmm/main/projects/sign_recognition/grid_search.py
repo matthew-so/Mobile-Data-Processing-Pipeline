@@ -19,8 +19,8 @@ GMM_PATT_IDX = 5
 def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--is_fingerspelling', action='store_true')
-    parser.add_argument('--gmm_mixes', nargs="*", type=int, default=[3])
-    parser.add_argument('--gmm_patterns', nargs="*", type=str, default=['all'])
+    parser.add_argument('--gmm_mixes', nargs="*", type=int, default=[None])
+    parser.add_argument('--gmm_patterns', nargs="*", type=str, choices=['all', 'middle'], default=['all'])
     parser.add_argument('--n_states', nargs='*', type=int, default=[8])
     parser.add_argument('--n_folds', nargs='*', type=int, default=[5]) # Called folds in driver.py/train.py/main.py
     parser.add_argument('--variances', nargs='*', type=float, default=[1e-5])
@@ -29,7 +29,8 @@ def parse_args():
         '--hmm_step_types',
         nargs='*',
         type=str,
-        default=['single']
+        default=['single'],
+        choices=['single', 'double', 'triple', 'start_stack', 'end_stack'],
     )
     return parser.parse_args()
 
@@ -97,13 +98,14 @@ def run_command(base_command, results_filepath, args, tup):
         f.write('=====================\n')
     
     command = base_command
-    #command += ' \\\n\t--grid_results_file ' + results_filepath
-    command += ' \\\n\t--n_splits {n}'.format(n=n_folds)
+    # command += ' \\\n\t--grid_results_file ' + results_filepath
+    # command += ' \\\n\t--n_splits {n}'.format(n=n_folds)
     command += ' \\\n\t--hmm_step_type {s}'.format(s=hmm_step_type)
     command += ' \\\n\t--variance {f}'.format(f=variance)
-    command += ' \\\n\t--gmm_mix {n}'.format(n=gmm_mix)
+    if gmm_mix is not None:
+        command += ' \\\n\t--gmm_mix {n}'.format(n=gmm_mix)
     command += ' \\\n\t--gmm_pattern {s}'.format(s=gmm_pattern)
-
+    
     command = command.expandtabs(4)
     
     print('Running Command: ' + command)

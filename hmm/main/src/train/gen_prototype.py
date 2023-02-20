@@ -50,10 +50,8 @@ def generate_prototype(n_states: int, n_features: int, output_filepath: str,
             if gmm_mix is not None:
                 if gmm_pattern == 'middle' and i > start + 1 and i < n_states - 2:
                     generate_gmm_state_space(f, n_states, n_features, gmm_mix, variance, i)
-                elif gmm_pattern == 'all':
-                    generate_gmm_state_space(f, n_states, n_features, gmm_mix, variance, i)
                 else:
-                    generate_state_space(f, n_states, n_features, mean, variance, i)
+                    generate_gmm_state_space(f, n_states, n_features, gmm_mix, variance, i)
             else:
                 generate_state_space(f, n_states, n_features, mean, variance, i)
 

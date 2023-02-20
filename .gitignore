@@ -20,6 +20,7 @@ logs/
 models/
 results/
 visualization/
+kaggle_parquet/
 
 # HMM Files
 dict*
@@ -36,7 +37,7 @@ wordList*
 *.hdman
 *.pickle
 raw_file_session_id_map.json
-mediapipe_count.py
+sign_to_prediction_index_map.json
 .DS_Store
 
 ## Python gitignore

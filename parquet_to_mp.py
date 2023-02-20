@@ -12,8 +12,6 @@ from tqdm import tqdm
 # Consts
 SEED = 5627
 PADDING_DIGITS = 8
-PARQUET_DIR = '/data/kaggle-data/competition-data-train/'
-TRAIN_CSV = '/data/kaggle-data/competition-data-train/train.csv'
 FIVE_SIGNS = ['yellow', 'who', 'listen', 'bye', 'cat']
 
 # Globals
@@ -67,7 +65,7 @@ def add_landmark_data(participant, sign, abs_path):
     min_frame = min(df.frame)
     df.apply(ingest_landmark, axis=1, args=(min_frame, participant, sign))
 
-def ingest_parquet_files(df):
+def ingest_parquet_files(df, parquet_dir):
     paths = df['path'].tolist()
     participants = df['participant_id'].tolist()
     signs = df['sign'].tolist()
@@ -77,22 +75,27 @@ def ingest_parquet_files(df):
         participant = str(row[1])
         sign = row[2]
 
-        abs_path = os.path.join(PARQUET_DIR, row[0])
+        abs_path = os.path.join(parquet_dir, row[0])
         add_metadata(participant, sign)
         add_landmark_data(participant, sign, abs_path)
     
-def get_train_data():
-    train_csv = pd.read_csv(TRAIN_CSV)
+def get_train_csv(parquet_dir):
+    train_csv_file = os.path.join(parquet_dir, 'train.csv')
+    train_csv = pd.read_csv(train_csv_file)
+    return train_csv
+
+def get_train_data(parquet_dir):
+    train_csv = get_train_csv(parquet_dir)
     signs = list(set(train_csv.sign.tolist()))
     signs.sort()
 
     print("Total Train Set Size: ", len(train_csv))
-    train_df = train_csv.loc[train_csv['sign'].isin(FIVE_SIGNS)]
-    train_df = train_df[['path', 'participant_id', 'sign']]
+    # train_df = train_csv.loc[train_csv['sign'].isin(FIVE_SIGNS)]
+    train_df = train_csv[['path', 'participant_id', 'sign']]
     print("Filtered Train Set Size: ", len(train_df))
     return train_df
 
-def create_mp_files():
+def create_mp_files(mp_root):
     def pad(num):
         existing_len = len(str(num))
         return f'{(PADDING_DIGITS - existing_len) * "0"}{num}'
@@ -105,7 +108,7 @@ def create_mp_files():
                 filename_components = [participant, sign, 'singlesign', attempt_count_str, 'data']
                 filename = '.'.join(filename_components)
                 
-                mp_dir = os.path.join('mediapipe_parquet', participant + '-singlesign', sign)
+                mp_dir = os.path.join(mp_root, participant + '-singlesign', sign)
                 if not os.path.exists(mp_dir):
                     os.makedirs(mp_dir)
                 
@@ -128,8 +131,8 @@ def add_sign_count(row, count_dict):
 
     count_dict[row.sign] += 1
 
-def print_user_sign_counts():
-    df = pd.read_csv(TRAIN_CSV)
+def print_user_sign_counts(parquet_dir):
+    df = get_train_csv(parquet_dir)
     count_dict = {}
     df.apply(add_user_sign_count, axis=1, args=(count_dict,))
     
@@ -138,8 +141,8 @@ def print_user_sign_counts():
         for sign in count_dict[participant]:
             print(f'\t{sign}: {count_dict[participant][sign]}')
 
-def print_sign_counts():
-    df = pd.read_csv(TRAIN_CSV)
+def print_sign_counts(parquet_dir):
+    df = get_train_csv(parquet_dir)
     count_dict = {}
     df.apply(add_sign_count, axis=1, args=(count_dict,))
     
@@ -150,7 +153,16 @@ def print_sign_counts():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_pickle_file', action='store_true')
+    parser.add_argument('--use_pickle_file', action='store_true',
+                        help='If True, will look for data_dict.pickle to load the ' + \
+                                'parquet data. Useful for debugging.')
+    parser.add_argument('--create_pickle_file', action='store_true',
+                        help='If True will create data_dict.pickle from the processed ' + \
+                                'parquet data. Useful for debugging.')
+    parser.add_argument('--parquet_dir', type=str, default='kaggle_parquet',
+                        help='Points to the dir containing train_landmark_files.')
+    parser.add_argument('--dest_dir', type=str, default='mediapipe_parquet',
+                        help='The root directory for the mediapipe JSON file.')
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -160,8 +172,8 @@ if __name__ == "__main__":
         with open('data_dict.pickle', 'rb') as f:
             data_dict = pickle.load(f)
     else:
-        train_df = get_train_data()
-        ingest_parquet_files(train_df)
+        train_df = get_train_data(args.parquet_dir)
+        ingest_parquet_files(train_df, args.parquet_dir)
         
         # total_signs = 0
         # for participant in data_dict:
@@ -171,9 +183,9 @@ if __name__ == "__main__":
         #         total_signs += len(data_dict[participant][sign])
         # print(f'Total signs: {total_signs}')
     
-    create_mp_files()
+    create_mp_files(args.dest_dir)
     
-    if not args.use_pickle_file:
+    if args.create_pickle_file:
         with open('data_dict.pickle', 'wb') as f:
             pickle.dump(data_dict, f)
 

@@ -37,7 +37,8 @@ def train(
     is_triletter: bool = False,
     hmm_step_type: str = 'single',
     gmm_mix: int = None,
-    gmm_pattern: str = 'middle'
+    gmm_pattern: str = 'middle',
+    features_file: str = 'configs/features.json',
 ) -> None:
     """Trains the HMM using HTK. Calls HCompV, HRest, HERest, HHEd, and
     HParse. Configuration files for prototypes and increasing mixtures
@@ -68,7 +69,7 @@ def train(
         if not os.path.exists(hmm_dir):
             os.makedirs(hmm_dir)
 
-    features_config = load_json('configs/features.json')
+    features_config = load_json(features_file)
     
     if num_features is None:
         n_features = len(features_config['selected_features'])
