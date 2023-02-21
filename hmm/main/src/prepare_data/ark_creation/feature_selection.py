@@ -12,6 +12,7 @@ import json
 import random
 import argparse
 import ipdb
+import os
 
 import numpy as np
 import pandas as pd
@@ -150,7 +151,7 @@ def select_features(input_filepath: str, features_to_extract: list,
     if n_frames - 1 != frames[-1]:
         log_lock.acquire()
         with open('logs/prepare_data.log', 'a') as f:
-            f.write(input_filepath)
+            f.write(os.path.basename(input_filepath) + '\n')
         log_lock.release()
         
         return None
