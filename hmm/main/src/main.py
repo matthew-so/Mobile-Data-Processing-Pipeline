@@ -20,7 +20,6 @@
 """
 import sys
 import glob
-import argparse
 import os
 import shutil
 import sys
@@ -37,7 +36,7 @@ sys.path.insert(0, '../../')
 from src.prepare_data import prepare_data
 from src.prepare_data.generate_text_files import generate_text_files
 from src.train import create_data_lists, train, trainSBHMM, get_logisitc_regressor, get_neural_net_classifier
-from src.utils import get_results, save_results, load_json, get_arg_groups, get_hresults_data
+from src.utils import get_results, save_results, dump_json, load_json, get_arg_groups, get_hresults_data, parse_main_args
 from src.test import test, testSBHMM, verify_simple, return_average_ll_per_sign, return_ll_per_correct_and_one_off_sign, verify_zahoor, verify_classifier
 from joblib import Parallel, delayed
 from statistics import mean
@@ -99,7 +98,7 @@ def crossValVerificationFold(train_data: list, test_data: list, args: object, fo
                     os.path.join(currDataFolder, "htk", i+".htk") for i in curr_test_files], args.phrase_len, fold)
 
         train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""), 
-                features_file=args.features_file)
+                features_file=args.features_file, prototypes_file=args.prototypes_file)
         if args.verification_method == "zahoor":
             curr_average_ll_sign = return_average_ll_per_sign(args.end, args.hmm_insertion_penalty, 
                                                             args.beam_threshold, fold=os.path.join(str(fold), ""))
@@ -146,7 +145,7 @@ def crossValVerificationFold(train_data: list, test_data: list, args: object, fo
     create_data_lists([os.path.join(currDataFolder, "htk", i+".htk") for i in trainFiles], [
                     os.path.join(currDataFolder, "htk", i+".htk") for i in testFiles], args.phrase_len, fold)
     train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""),
-            features_file=args.features_file)
+            features_file=args.features_file, prototypes_file=args.prototypes_file)
     if args.verification_method == "zahoor":
         positive, negative, false_positive, false_negative, test_log_likelihoods = verify_zahoor(args.end, args.hmm_insertion_penalty, classifier, 
                                                                         args.beam_threshold, fold=os.path.join(str(fold), ""))
@@ -199,7 +198,8 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
                 args.parallel_jobs, args.parallel_classifier_training, os.path.join(str(fold), ""))
     else:
         if run_train: train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""),
-                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, gmm_pattern=args.gmm_pattern, features_file=args.features_file)
+                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, features_file=args.features_file,
+                prototypes_file = args.prototypes_file)
         test(args.start, args.end, args.method, args.hmm_insertion_penalty, fold=os.path.join(str(fold), ""))
 
     if args.train_sbhmm:
@@ -218,7 +218,72 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
 
     return [results['error'], results['sentence_error'], results['insertions'], results['deletions']]
 
+def test_on_train(args, hresults_file):
+    if not args.users:
+        htk_filepaths = glob.glob('data/htk/*.htk')
+    else:
+        htk_filepaths = []
+        for user in args.users:
+            htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+
+    create_data_lists(htk_filepaths, htk_filepaths, args.phrase_len)
     
+    if args.train_sbhmm:
+        classifiers = trainSBHMM(args.sbhmm_cycles, args.train_iters, args.mean, args.variance, args.transition_prob,
+                    args.pca_components, args.sbhmm_iters, args.include_word_level_states, args.include_word_position, args.pca,
+                    args.hmm_insertion_penalty, args.sbhmm_insertion_penalty, args.parallel_jobs, args.parallel_classifier_training,
+                    args.multiple_classifiers, args.neighbors, args.classifier, args.beam_threshold)
+        testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty,
+                args.parallel_jobs, args.parallel_classifier_training)
+    else:
+        train(args.train_iters, args.mean, args.variance, args.transition_prob,
+            hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix,
+            is_triletter=args.model_type=="triletter", features_file=args.features_file,
+            prototypes_file=args.prototypes_file)
+        if args.method == "recognition":
+            test(args.start, args.end, args.method, args.hmm_insertion_penalty, is_triletter=args.model_type=="triletter")
+        elif args.method == "verification":
+            positive, negative, false_positive, false_negative = verify_simple(args.end, args.insertion_penalty,
+                                                                args.acceptance_threshold, args.beam_threshold)
+    
+    if args.method == "recognition":
+        all_results['fold_0'] = get_results(hresults_file)
+        all_results['average']['error'] = all_results['fold_0']['error']
+        all_results['average']['sentence_error'] = all_results['fold_0']['sentence_error']
+
+        print('Test on Train Results')
+    
+    if args.method == "verification":
+        all_results['average']['positive'] = positive
+        all_results['average']['negative'] = negative
+        all_results['average']['false_positive'] = false_positive
+        all_results['average']['false_negative'] = false_negative
+
+        print('Test on Train Results')
+
+def prepare_prototypes_file(prototypes_file, wordlist, n_states):
+    with open(wordlist, 'r') as f:
+        tokens = [line.rstrip() for line in f.readlines()]
+    
+    prototype_config = {str(n_states): tokens}
+    dump_json(prototypes_file, prototype_config)
+
+def get_five_set_list(wordlist):
+    with open(wordlist, 'r') as f:
+        tokens = f.readlines()
+    
+    tokens = [token.rstrip() for token in tokens]
+    tokens.remove('sil0')
+    tokens.remove('sil1')
+    random.shuffle(tokens)
+    
+    five_set_list = []
+    for i in range(0, math.ceil(len(tokens)/5)):
+        start = i*5
+        end = (i+1)*5
+        five_set_list.append(tokens[start:end])
+    return five_set_list
+
 def print_to_stdout(str_list):
     for s in str_list:
         print(s)
@@ -230,82 +295,8 @@ def print_to_file(str_list, filepath):
         f.write('\n')
 
 def main():
-    
-    parser = argparse.ArgumentParser()
-    ############################## ARGUMENTS #####################################
-    #Important
-    parser.add_argument('--prepare_data', action='store_true')
-    parser.add_argument('--save_results', action='store_true')
-    parser.add_argument('--save_results_file', type=str,
-                        default='all_results.json')
-    parser.add_argument('--features_file', type=str, default='configs/features.json')
-    parser.add_argument('--is_single_word', action='store_true')
-
-    # Arguments for create_data_lists()
-    parser.add_argument('--test_type', type=str, default='test_on_train',
-                        choices=['none', 'test_on_train', 'cross_val', 'standard', 'progressive_user_adaptive', 'user_independent_limited_guess'])
-    parser.add_argument('--users', nargs='*', default=None)
-    parser.add_argument('--cross_val_method', default='kfold', choices=['kfold',
-                                                  'leave_one_phrase_out',
-                                                  'stratified',
-                                                  'leave_one_user_out',
-                                                  'user_dependent',
-                                                  ])
-    parser.add_argument('--n_splits', type=int, default=10)
-    parser.add_argument('--cv_parallel', action='store_true')
-    parser.add_argument('--parallel_jobs', default=4, type=int)
-    parser.add_argument('--test_size', type=float, default=0.1)
-    parser.add_argument('--phrase_len', type=int, default=0)
-    parser.add_argument('--random_state', type=int, default=42) #The answer to life, the universe and everything
-
-    #Arguments for training
-    parser.add_argument('--train_iters', nargs='*', type=int, default=[20, 50, 80])
-    parser.add_argument('--hmm_insertion_penalty', default=-10)
-    parser.add_argument('--mean', type=float, default=0.0)
-    parser.add_argument('--variance', type=float, default=1.0)
-    parser.add_argument('--transition_prob', type=float, default=0.6)
-    parser.add_argument(
-        '--hmm_step_type',
-        type=str,
-        choices=['single','double','triple', 'start_stack', 'end_stack'],
-        default='single'
-    )
-    parser.add_argument('--gmm_pattern', type=str, default='middle')    
-    parser.add_argument('--gmm_mix', type=int, default=None)
-
-    #Arguments for SBHMM
-    parser.add_argument('--train_sbhmm', action='store_true')    
-    parser.add_argument('--sbhmm_iters', nargs='*', type=int, default=[20, 50, 80])
-    parser.add_argument('--include_word_position', action='store_true')
-    parser.add_argument('--include_word_level_states', action='store_true')
-    parser.add_argument('--sbhmm_insertion_penalty', default=-10)
-    parser.add_argument('--classifier', type=str, default='knn',
-                        choices=['knn', 'adaboost'])
-    parser.add_argument('--neighbors', default=50)
-    parser.add_argument('--sbhmm_cycles', type=int, default=1)
-    parser.add_argument('--pca', action='store_true')
-    parser.add_argument('--pca_components', type=int, default=32)
-    parser.add_argument('--multiple_classifiers', action='store_true')
-    parser.add_argument('--parallel_classifier_training', action='store_true')
-    parser.add_argument('--beam_threshold', default=100000000.0)
-
-    #Arguments for testing
-    parser.add_argument('--start', type=int, default=-2)
-    parser.add_argument('--end', type=int, default=-1)
-    parser.add_argument('--method', default='recognition', 
-                        choices=['recognition', 'verification'])
-    parser.add_argument('--acceptance_threshold', default=-150)
-    parser.add_argument('--verification_method', default='zahoor', 
-                        choices=['zahoor', 'logistic_regression', 'neural_net'])
-
-    parser.add_argument('--training_type', default='sign', 
-                        choices=['sign', 'fingerspelling'])
-
-    parser.add_argument('--model_type', default='uniletter', 
-                        choices=['uniletter', 'triletter'])
-    parser.add_argument('--grid_results_file', type=str, default=None)
-    
-    args = parser.parse_args()
+    args = parse_main_args()
+    print(args)
     ########################################################################################
 
     if args.users: args.users = [user.capitalize() for user in args.users]
@@ -335,54 +326,22 @@ def main():
 
     if args.prepare_data and not args.test_type == 'progressive_user_adaptive':
         # this will include users in verification
-        prepare_data(features_config, args.users, isFingerspelling=isFingerspelling, isSingleWord=args.is_single_word)
+        prepare_data(
+            features_config,
+            args.users,
+            isFingerspelling=isFingerspelling,
+            isSingleWord=args.is_single_word,
+            num_threads=args.parallel_jobs
+        )
 
     if args.test_type == 'none':
         sys.exit()
-
-    elif args.test_type == 'test_on_train':
-        
-        if not args.users:
-            htk_filepaths = glob.glob('data/htk/*.htk')
-        else:
-            htk_filepaths = []
-            for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
-
-        create_data_lists(htk_filepaths, htk_filepaths, args.phrase_len)
-        
-        if args.train_sbhmm:
-            classifiers = trainSBHMM(args.sbhmm_cycles, args.train_iters, args.mean, args.variance, args.transition_prob, 
-                        args.pca_components, args.sbhmm_iters, args.include_word_level_states, args.include_word_position, args.pca, 
-                        args.hmm_insertion_penalty, args.sbhmm_insertion_penalty, args.parallel_jobs, args.parallel_classifier_training,
-                        args.multiple_classifiers, args.neighbors, args.classifier, args.beam_threshold)
-            testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty,
-                    args.parallel_jobs, args.parallel_classifier_training)
-        else:
-            train(args.train_iters, args.mean, args.variance, args.transition_prob, 
-                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, gmm_pattern=args.gmm_pattern,
-                is_triletter=args.model_type=="triletter", features_file=args.features_file)
-            if args.method == "recognition":
-                test(args.start, args.end, args.method, args.hmm_insertion_penalty, is_triletter=args.model_type=="triletter")
-            elif args.method == "verification":
-                positive, negative, false_positive, false_negative = verify_simple(args.end, args.insertion_penalty, 
-                                                                    args.acceptance_threshold, args.beam_threshold)
-        
-        if args.method == "recognition":
-            all_results['fold_0'] = get_results(hresults_file)
-            all_results['average']['error'] = all_results['fold_0']['error']
-            all_results['average']['sentence_error'] = all_results['fold_0']['sentence_error']
-
-            print('Test on Train Results')
-        
-        if args.method == "verification":
-            all_results['average']['positive'] = positive
-            all_results['average']['negative'] = negative
-            all_results['average']['false_positive'] = false_positive
-            all_results['average']['false_negative'] = false_negative
-
-            print('Test on Train Results')
     
+    prepare_prototypes_file(args.prototypes_file, args.wordlist, args.n_states)
+
+    if args.test_type == 'test_on_train':
+        test_on_train(args, hresults_file)
+         
     elif args.test_type == 'cross_val' and args.cv_parallel:
         print("You have invoked parallel cross validation. Be prepared for dancing progress bars!")
 
@@ -529,7 +488,8 @@ def main():
                 testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty, 
                         args.parallel_jobs, args.parallel_classifier_training)
             else:
-                train(args.train_iters, args.mean, args.variance, args.transition_prob, features_file=args.features_file)
+                train(args.train_iters, args.mean, args.variance, args.transition_prob,
+                        features_file=args.features_file, prototypes_file=args.prototypes_file)
                 test(args.start, args.end, args.method, args.hmm_insertion_penalty)
             
             results = get_results(hresults_file)
@@ -577,17 +537,24 @@ def main():
         create_data_lists(train_data, test_data, args.phrase_len)
         if args.train_sbhmm:
             classifiers = trainSBHMM(args.sbhmm_cycles, args.train_iters, args.mean, args.variance, args.transition_prob, 
-                        args.pca_components, args.sbhmm_iters, args.include_word_level_states, args.include_word_position, args.pca, 
-                        args.hmm_insertion_penalty, args.sbhmm_insertion_penalty, args.parallel_jobs, args.parallel_classifier_training,
-                        args.multiple_classifiers, args.neighbors, args.classifier, args.beam_threshold)
+                                        args.pca_components, args.sbhmm_iters, args.include_word_level_states,
+                                        args.include_word_position, args.pca, args.hmm_insertion_penalty, args.sbhmm_insertion_penalty,
+                                        args.parallel_jobs, args.parallel_classifier_training, args.multiple_classifiers,
+                                        args.neighbors, args.classifier, args.beam_threshold)
             testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty, 
-                    args.parallel_jobs, args.parallel_classifier_training)
+                        args.parallel_jobs, args.parallel_classifier_training)
         else:
-            train(args.train_iters, args.mean, args.variance, args.transition_prob, features_file=args.features_file)
+            train(args.train_iters, args.mean, args.variance, args.transition_prob, features_file=args.features_file,
+                    prototypes_file=args.prototypes_file)
             if args.method == "recognition":
                 test(args.start, args.end, args.method, args.hmm_insertion_penalty)
             elif args.method == "verification":
-                positive, negative, false_positive, false_negative = verify_simple(args.end, args.hmm_insertion_penalty, args.acceptance_threshold, args.beam_threshold)
+                positive, negative, false_positive, false_negative = verify_simple(
+                    args.end,
+                    args.hmm_insertion_penalty,
+                    args.acceptance_threshold,
+                    args.beam_threshold
+                )
         
         if args.method == "recognition":
             all_results['fold_0'] = get_results(hresults_file)
@@ -1015,6 +982,9 @@ def main():
         if args.grid_results_file is None:
             print_to_stdout(out_str_list)
         else:
+            filepath = os.path.dirname(args.grid_results_file)
+            if not os.path.exists(filepath):
+                os.makedirs(filepath)
             print_to_file(out_str_list, args.grid_results_file)
     
     if args.method == "verification":

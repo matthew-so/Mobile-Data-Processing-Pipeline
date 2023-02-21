@@ -1,5 +1,5 @@
 """Generates prototype files used to initalize models. Should be used
-with configs/prototypes.json. Different words can be initialized with
+with the prototypes JSON in configs. Different words can be initialized with
 different prototypes.
 
 Methods
@@ -13,7 +13,7 @@ from .gen_hmm_utils import *
 def generate_prototype(n_states: int, n_features: int, output_filepath: str, 
                        mean: float = 0.0, variance: float = 1.0, 
                        transition_prob: float = 0.6, hmm_step_type: str = 'single',
-                       gmm_mix: int = None, gmm_pattern: str = 'middle') -> None:
+                       gmm_mix: int = None) -> None:
     """Generates prototype files used to initalize models.
 
     Parameters
@@ -48,10 +48,7 @@ def generate_prototype(n_states: int, n_features: int, output_filepath: str,
         start = 2
         for i in range(start, n_states):
             if gmm_mix is not None:
-                if gmm_pattern == 'middle' and i > start + 1 and i < n_states - 2:
-                    generate_gmm_state_space(f, n_states, n_features, gmm_mix, variance, i)
-                else:
-                    generate_gmm_state_space(f, n_states, n_features, gmm_mix, variance, i)
+                generate_gmm_state_space(f, n_states, n_features, gmm_mix, variance, i)
             else:
                 generate_state_space(f, n_states, n_features, mean, variance, i)
 

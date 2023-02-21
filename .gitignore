@@ -38,6 +38,7 @@ wordList*
 *.pickle
 raw_file_session_id_map.json
 sign_to_prediction_index_map.json
+five_set_train.py
 .DS_Store
 
 ## Python gitignore

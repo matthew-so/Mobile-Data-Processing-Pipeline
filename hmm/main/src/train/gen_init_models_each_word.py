@@ -1,6 +1,6 @@
 """Initializes models for words in training set from a given prototype.
-Should be called after generate_prototype and in conjuncion with
-configs/prototypes.json.
+Should be called after generate_prototype and in conjunction with
+the prototypes JSON in configs.
 
 Methods
 -------

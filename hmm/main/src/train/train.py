@@ -37,8 +37,8 @@ def train(
     is_triletter: bool = False,
     hmm_step_type: str = 'single',
     gmm_mix: int = None,
-    gmm_pattern: str = 'middle',
     features_file: str = 'configs/features.json',
+    prototypes_file: str = 'configs/prototypes.json'
 ) -> None:
     """Trains the HMM using HTK. Calls HCompV, HRest, HERest, HHEd, and
     HParse. Configuration files for prototypes and increasing mixtures
@@ -78,7 +78,7 @@ def train(
 
     print("-------------- Training HMM --------------")
 
-    prototypes_config = load_json('configs/prototypes.json')
+    prototypes_config = load_json(prototypes_file)
     for n_states in prototypes_config:
         n_states_int = int(n_states)
         check_args(n_states_int, hmm_step_type)
@@ -86,7 +86,7 @@ def train(
         generate_prototype(
             n_states_int, n_features, prototype_filepath, mean,
             variance, transition_prob, hmm_step_type=hmm_step_type,
-            gmm_mix=gmm_mix, gmm_pattern=gmm_pattern
+            gmm_mix=gmm_mix
         )
 
         print('Running HCompV...')

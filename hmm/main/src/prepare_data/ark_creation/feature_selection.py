@@ -17,7 +17,9 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 from scipy.spatial.distance import cdist
+from multiprocess import Lock
 
+log_lock = Lock()
 
 def _load_json(json_file: str) -> dict:
     """Load JSON file TODO: Remove and use src.utils.load_json.
@@ -142,6 +144,16 @@ def select_features(input_filepath: str, features_to_extract: list,
     noses = np.zeros((1, n_frames, 3))
     optical_flow = np.zeros((2, n_frames, 32))
     # print("Features to Extract: ", features_to_extract)
+
+    frames = list(data.keys())
+    frames.sort()
+    if n_frames - 1 != frames[-1]:
+        log_lock.acquire()
+        with open('logs/prepare_data.log', 'a') as f:
+            f.write(input_filepath)
+        log_lock.release()
+        
+        return None
 
     for frame in sorted(data.keys()):
 
