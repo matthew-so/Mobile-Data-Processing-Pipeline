@@ -326,6 +326,9 @@ def main():
 
     if args.prepare_data and not args.test_type == 'progressive_user_adaptive':
         # this will include users in verification
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        
         prepare_data(
             features_config,
             args.users,
