@@ -96,12 +96,14 @@ def create_ark_files(features_config: dict, users: list, phrase_len: list, verbo
         Whether to print output during process.
     """
 
-    ark_dir = os.path.join('data_new', 'ark')
+    ark_dir = os.path.join('data', 'ark')
     
-    if os.path.exists(ark_dir):
-        shutil.rmtree(ark_dir)
+    # if os.path.exists(ark_dir):
+    #     shutil.rmtree(ark_dir)
+    
+    if not os.path.exists(ark_dir):
+        os.makedirs(ark_dir)
 
-    os.makedirs(ark_dir)
     if not users:
         features_filepaths = glob.glob(os.path.join(features_config['features_dir'], '**', '*.data'), recursive = True)
         features_filepaths.extend(glob.glob(os.path.join(features_config['features_dir'], '**', '*.json'), recursive = True))

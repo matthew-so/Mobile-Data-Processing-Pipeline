@@ -19,7 +19,7 @@ import string
 
 from numpy.lib.arraysetops import unique
 
-def generate_text_files(features_dir: str, isFingerspelling: bool, isSingleWord: bool) -> None:
+def generate_text_files(features_dir: str, isFingerspelling: bool, isSingleWord: bool, unique_words: set = None) -> None:
     """Creates all text files needed to train/test HMMs with HTK,
     including wordList, dict, grammar, and all_labels.mlf.
     
@@ -29,8 +29,8 @@ def generate_text_files(features_dir: str, isFingerspelling: bool, isSingleWord:
         Unix style pathname pattern pointing to all the features
         extracted from training data.
     """
-
-    unique_words = _get_unique_words(features_dir)
+    if not unique_words:
+        unique_words = _get_unique_words(features_dir)
 
     _generate_word_list(unique_words, isFingerspelling)
 
@@ -265,7 +265,7 @@ def _generate_mlf_file(isFingerspelling: bool) -> None:
     dataset.
     """
 
-    htk_filepaths = os.path.join('data_new', 'htk', '*.htk')
+    htk_filepaths = os.path.join('data', 'htk', '*.htk')
     filenames = glob.glob(htk_filepaths)
 
     with open('all_labels.mlf', 'w') as f:
@@ -282,9 +282,11 @@ def _generate_mlf_file(isFingerspelling: bool) -> None:
 
             for word in phrase:
                 if isFingerspelling:
-                    f.write('{}\n'.format('\n'.join(word.lower())))
+                    f.write('{}\n'.format('\n'.join(word)))
+                    # f.write('{}\n'.format('\n'.join(word.lower())))
                 else:
-                    f.write('{}\n'.format(word.lower()))
+                    f.write('{}\n'.format(word))
+                    # f.write('{}\n'.format(word.lower()))
 
             f.write('sil1\n')
             f.write('.\n')

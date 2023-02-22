@@ -54,27 +54,28 @@ def get_results_filepath(args):
     results_filepath = os.path.join(results_dir, 'results.txt')
     return results_filepath
 
-def run_command(base_command, results_filepath, args, tup):
+def run_command(base_command, args, tup, results_filepath=None):
     n_states = tup[STATE_IDX]
     n_folds = tup[FOLD_IDX]
     hmm_step_type = tup[HMM_TYPE_IDX]
     variance = tup[VAR_IDX]
     gmm_mix = tup[GMM_MIX_IDX]
     
-    with open(results_filepath, 'a') as f:
-        f.write(
-            'Num States: {n} | Num Folds: {f} | HMM Step Type: {h} | Variance: {v} | GMM Num Mixes: {gm}\n'.format(
-                n=n_states,
-                f=n_folds,
-                h=hmm_step_type,
-                v=variance,
-                gm=gmm_mix
+    if results_filepath:
+        with open(results_filepath, 'a') as f:
+            f.write(
+                'Num States: {n} | Num Folds: {f} | HMM Step Type: {h} | Variance: {v} | GMM Num Mixes: {gm}\n'.format(
+                    n=n_states,
+                    f=n_folds,
+                    h=hmm_step_type,
+                    v=variance,
+                    gm=gmm_mix
+                )
             )
-        )
-        f.write('=====================\n')
+            f.write('=====================\n')
     
     command = base_command
-    command += ' \\\n\t--grid_results_file ' + results_filepath
+    # command += ' \\\n\t--grid_results_file ' + results_filepath
     command += ' \\\n\t--n_states {n}'.format(n=n_states)
     
     if args.test_type == 'cross_val':
@@ -112,6 +113,6 @@ if __name__ == "__main__":
 
     base_command = get_base_command(command_file)
     for tup in grid_search_list:
-        results_filepath = get_results_filepath(tup)
-        run_command(base_command, results_filepath, args, tup)
+        # results_filepath = get_results_filepath(tup)
+        run_command(base_command, args, tup)
 

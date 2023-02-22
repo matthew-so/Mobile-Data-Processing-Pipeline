@@ -27,6 +27,7 @@ import random
 import numpy as np
 import tqdm
 import pickle
+import math
 
 
 from sklearn.model_selection import (
@@ -218,15 +219,25 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
 
     return [results['error'], results['sentence_error'], results['insertions'], results['deletions']]
 
-def test_on_train(args, hresults_file):
+def test_on_train(args, all_results, fold="", five_set=None):
     if not args.users:
-        htk_filepaths = glob.glob('data/htk/*.htk')
+        if not five_set:
+            htk_filepaths = glob.glob('data/htk/*.htk')
+        else:
+            htk_filepaths = []
+            for sign in five_set:
+                htk_filepaths.extend(glob.glob('data/htk/*.{}.*.htk'.format(sign)))
     else:
         htk_filepaths = []
-        for user in args.users:
-            htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
-
-    create_data_lists(htk_filepaths, htk_filepaths, args.phrase_len)
+        if not five_set:
+            for user in args.users:
+                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '{}*.htk'.format(user))))
+        else:
+            for user in args.users:
+                for sign in five_set:
+                    htk_filepaths.extend(glob.glob(os.path.join("data/htk", '{}.{}.*.htk'.format(user, sign))))
+    
+    create_data_lists(htk_filepaths, htk_filepaths, args.phrase_len, fold=fold)
     
     if args.train_sbhmm:
         classifiers = trainSBHMM(args.sbhmm_cycles, args.train_iters, args.mean, args.variance, args.transition_prob,
@@ -239,12 +250,18 @@ def test_on_train(args, hresults_file):
         train(args.train_iters, args.mean, args.variance, args.transition_prob,
             hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix,
             is_triletter=args.model_type=="triletter", features_file=args.features_file,
-            prototypes_file=args.prototypes_file)
+            prototypes_file=args.prototypes_file, fold=fold)
         if args.method == "recognition":
-            test(args.start, args.end, args.method, args.hmm_insertion_penalty, is_triletter=args.model_type=="triletter")
+            test(args.start, args.end, args.method, args.hmm_insertion_penalty,
+                is_triletter=args.model_type=="triletter", fold=fold)
         elif args.method == "verification":
             positive, negative, false_positive, false_negative = verify_simple(args.end, args.insertion_penalty,
-                                                                args.acceptance_threshold, args.beam_threshold)
+                                                                args.acceptance_threshold, args.beam_threshold,
+                                                                fold=fold)
+    if args.train_sbhmm:
+        hresults_file = f'hresults/{fold}res_hmm{args.sbhmm_iters[-1]-1}.txt'
+    else:
+        hresults_file = f'hresults/{fold}res_hmm{args.train_iters[-1]-1}.txt'
     
     if args.method == "recognition":
         all_results['fold_0'] = get_results(hresults_file)
@@ -268,13 +285,14 @@ def prepare_prototypes_file(prototypes_file, wordlist, n_states):
     prototype_config = {str(n_states): tokens}
     dump_json(prototypes_file, prototype_config)
 
-def get_five_set_list(wordlist):
+def get_five_set_list(wordlist, seed=3245):
     with open(wordlist, 'r') as f:
         tokens = f.readlines()
     
     tokens = [token.rstrip() for token in tokens]
     tokens.remove('sil0')
     tokens.remove('sil1')
+    random.seed(seed)
     random.shuffle(tokens)
     
     five_set_list = []
@@ -343,7 +361,24 @@ def main():
     prepare_prototypes_file(args.prototypes_file, args.wordlist, args.n_states)
 
     if args.test_type == 'test_on_train':
-        test_on_train(args, hresults_file)
+        if args.train_type == 'five_sign':
+            five_set_list = get_five_set_list(args.wordlist, seed=args.random_state)
+            five_set_map = {}
+            for i,five_set in enumerate(five_set_list):
+                generate_text_files(
+                    features_config["features_dir"],
+                    isFingerspelling=False,
+                    isSingleWord=True,
+                    unique_words=five_set
+                )
+                print("Five Signs: ", five_set)
+                key = str(i)
+                fold = os.path.join(key, "")
+                five_set_map[key] = five_set
+                test_on_train(args, all_results, fold=fold, five_set=five_set)
+            dump_json("five_set_map.json", five_set_map)
+        else:
+            test_on_train(args, all_results)
          
     elif args.test_type == 'cross_val' and args.cv_parallel:
         print("You have invoked parallel cross validation. Be prepared for dancing progress bars!")
