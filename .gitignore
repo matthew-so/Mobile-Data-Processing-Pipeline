@@ -21,6 +21,7 @@ models/
 results/
 visualization/
 kaggle_parquet/
+15signsdata/
 
 # HMM Files
 dict*
@@ -36,6 +37,7 @@ wordList*
 *.hed
 *.hdman
 *.pickle
+*.png
 raw_file_session_id_map.json
 sign_to_prediction_index_map.json
 five_set_map.json

@@ -4,6 +4,7 @@ import argparse
 
 from tqdm import tqdm
 from glob import glob
+from matplotlib import pyplot as plt
 
 def get_file_data(mediapipe_files):
     ts_keys = {}
@@ -28,16 +29,22 @@ def get_file_data(mediapipe_files):
 
 def check_keys(ts_keys):
     missing_keys = {'yes': 0, 'no': 0}
+    frame_dist = []
     for mp_file in ts_keys:
         keys = ts_keys[mp_file]
         
         int_keys = [int(key) for key in keys]
         int_keys.sort()
         
+        if len(int_keys) - 1 == int_keys[-1]:
+            frame_dist.append(len(int_keys))
+            missing = 'no'
+        else:
+            missing = 'yes'
         missing = 'yes' if len(int_keys) - 1 != int_keys[-1] else 'no'
         missing_keys[missing] += 1
         
-    return missing_keys
+    return missing_keys, frame_dist
 
 def classify_landmark(landmark):
     if len(landmark) == 0:
@@ -91,7 +98,7 @@ def print_distribution(header, count_dict):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mediapipe_dir', help='Directory with mediapipe files')
+    parser.add_argument('--mediapipe_dir', help='Directory with mediapipe files')
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -101,17 +108,19 @@ if __name__ == "__main__":
     mediapipe_files = glob(glob_path)
     ts_keys, landmarks, pose = get_file_data(mediapipe_files)
     
-    missing_keys = check_keys(ts_keys)
+    missing_keys, frame_dist = check_keys(ts_keys)
     missing_landmarks_0, missing_landmarks_1 = check_landmarks(landmarks)
     missing_pose = check_pose(pose)
     
-    print_distribution("Missing Keys", missing_keys)
-    print_distribution("Missing Landmarks (0)", missing_landmarks_0)
-    print_distribution("Missing Landmarks (1)", missing_landmarks_1)
-    print_distribution("Missing Pose", missing_pose)
+    bins = [
+        0,5,10,15,20,25,30,35,40,45,50,60,70,80,90,
+        100,120,140,160,180,200,240,280,320,360,400,
+        450,500
+    ]
+    plt.hist(frame_dist, bins=bins)
+    plt.savefig('frame_dist.png')
+    # print_distribution("Missing Keys", missing_keys)
+    # print_distribution("Missing Landmarks (0)", missing_landmarks_0)
+    # print_distribution("Missing Landmarks (1)", missing_landmarks_1)
+    # print_distribution("Missing Pose", missing_pose)
 
-    # print("Missing Keys: ", missing_keys)
-    # print('Missing Landmarks (0): ', missing_landmarks_0)
-    # print('Missing Landmarks (1): ', missing_landmarks_1)
-    # print('Missing Pose: ', missing_pose)
-    

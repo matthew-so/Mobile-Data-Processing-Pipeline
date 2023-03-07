@@ -257,7 +257,7 @@ def enumerate_files(input_folder, processTenSign=False):
 
 
 if __name__ == '__main__':
-    args = argparse.ArgumentParser()
+    args = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     args.add_argument('--noMark', action='store_true',
                       help='If provided, files that are processed will not be renamed to include "-done" '
                            'at the end of their filenames. This means they will be re-processed the next '
