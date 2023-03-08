@@ -16,14 +16,16 @@ log_lock = Lock()
 
 def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--backup_dir', required=True, type=str)
-    parser.add_argument('--dest_dir', required=True, type=str)
-    parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920))
-    parser.add_argument('--log_file', type=str, default=None)
-    parser.add_argument('--skip_extraction', action='store_true')
-    parser.add_argument('--num_threads', type=int, default=5)
-    parser.add_argument('--make_structured_dirs', action='store_true')
-    parser.add_argument('--use_cuda', action='store_true')
+    parser.add_argument('--backup_dir', required=True, type=str, help='Input for Raw Videos')
+    parser.add_argument('--dest_dir', required=True, type=str, help='Output for Split Videos')
+    parser.add_argument('--video_dim', nargs=2, type=int, default=(1080, 1920), help='Dimension to resize video')
+    parser.add_argument('--log_file', type=str, default=None, help='File for logging')
+    parser.add_argument('--skip_extraction', action='store_true', help='Skip Extraction and only produce counts')
+    parser.add_argument('--buffer', nargs=2, type=float, default=(-0.5, 0.5), help='Buffer for start/end of video')
+    parser.add_argument('--invert', action='store_true', help='Switch start/end timestamps.')
+    parser.add_argument('--num_threads', type=int, default=5, help='Num of threads for extraction')
+    parser.add_argument('--make_structured_dirs', action='store_true', help='Make output directory structure by sign')
+    parser.add_argument('--use_cuda', action='store_true', help='Use CUDA for processing')
     
     args = parser.parse_args()
     return args
@@ -88,8 +90,12 @@ def extract_clip_from_video(args, uid, sign, recording_idx, recording, videopath
     start_subclip = start_seconds.seconds + start_seconds.microseconds / 1e6
     end_subclip = end_seconds.seconds + end_seconds.microseconds / 1e6
     
-    start_subclip -= 0.5
-    end_subclip += 0.5
+    if args.invert:
+        start_subclip = end_subclip + args.buffer[0]
+        end_subclip += args.buffer[1]
+    else:    
+        start_subclip += args.buffer[0]
+        end_subclip += args.buffer[1]
 
     output_dir = args.dest_dir
 
