@@ -1,0 +1,12 @@
+#PBS -N Mobile_Data_Processing
+#PBS -A GT-ts133
+#PBS -l nodes=1:ppn=24
+#PBS -l walltime=2:00:00
+#PBS -q inferno
+#PBS -o Mobile_Data_Processing.out
+#PBS -j oe
+#PBS -m p
+#PBS -t 1-40
+
+cd $PBS_O_WORKDIR
+singularity exec --nv --bind /storage/home/hcoda1/9/gdeshpande9/p-ts133-0/Mobile-Data-Processing-Pipeline:/Mobile-Data-Processing-Pipeline --bind /storage/home/hcoda1/9/gdeshpande9/p-ts133-0/sign_language_videos:/data/sign_language_videos /storage/coda1/p-ts133/0/containers/copycat-gpu-cuda10.2-cudnn7.sif sh run_decode.sh
