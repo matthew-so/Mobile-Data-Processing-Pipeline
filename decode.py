@@ -146,7 +146,8 @@ def extract_clip_from_video(
             start_subclip += buffer_0
             end_subclip += buffer_1
             
-    else:    
+    else:
+        print(f"Could not find {uid} in config.json file")    
         if args.invert:
             start_subclip = end_subclip + args.buffer[0]
             end_subclip += args.buffer[1]
