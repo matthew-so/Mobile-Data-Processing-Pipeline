@@ -9,6 +9,7 @@ from collections import defaultdict
 import re
 import os
 import argparse
+import json
 
 import subprocess
 
@@ -102,6 +103,10 @@ def clean_sign(sign):
 def extract_clip_from_video(
     args, uid, sign, recording_idx, recording, videopath, is_valid_exists
 ):
+    
+    with open("config.json") as f:
+        config = json.load(f)
+    
     print("Recording: ", recording)
     if is_valid_exists:
         filename, video_start_time, sign_start_time, sign_end_time, is_valid = recording
@@ -129,13 +134,25 @@ def extract_clip_from_video(
 
     start_subclip = start_seconds.seconds + start_seconds.microseconds / 1e6
     end_subclip = end_seconds.seconds + end_seconds.microseconds / 1e6
-
-    if args.invert:
-        start_subclip = end_subclip + args.buffer[0]
-        end_subclip += args.buffer[1]
-    else:
-        start_subclip += args.buffer[0]
-        end_subclip += args.buffer[1]
+    
+    if uid in config:
+        buffer_0 = config[uid]["buffer_start"]
+        buffer_1 = config[uid]["buffer_end"]
+        invert = config[uid]["invert"]
+        if invert:
+            start_subclip = end_subclip + buffer_0
+            end_subclip += buffer_1
+        else:
+            start_subclip += buffer_0
+            end_subclip += buffer_1
+            
+    else:    
+        if args.invert:
+            start_subclip = end_subclip + args.buffer[0]
+            end_subclip += args.buffer[1]
+        else:
+            start_subclip += args.buffer[0]
+            end_subclip += args.buffer[1]
 
     output_dir = args.dest_dir
 

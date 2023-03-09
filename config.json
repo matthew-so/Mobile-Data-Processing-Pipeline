@@ -1,0 +1,27 @@
+{
+  "4a.8051": {
+    "buffer_start": -1.2,
+    "buffer_end": 0.5,
+    "invert": false
+  },
+  "4a.8049": {
+    "buffer_start": -1.2,
+    "buffer_end": 0.5,
+    "invert": false
+  },
+  "4a.8027": {
+    "buffer_start": 0.0,
+    "buffer_end": 2.0,
+    "invert": true
+  },
+  "4a.8022": {
+    "buffer_start": -1.0,
+    "buffer_end": 0.3,
+    "invert": false
+  },
+  "4a.8014": {
+    "buffer_start": 0.5,
+    "buffer_end": 3.0,
+    "invert": true
+  }
+}
