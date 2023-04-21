@@ -4,6 +4,7 @@ raw*/
 mediapipe*/
 demo/
 logs/
+five_sign/
 
 # Housekeeping Dirs
 .vscode/
@@ -42,6 +43,10 @@ raw_file_session_id_map.json
 sign_to_prediction_index_map.json
 five_set_map.json
 !signs.txt
+decode_special.py
+mediapipe_convert_guru_edits.py
+mediapipe_convert_hands.py
+mediapipe_convert_hands_guru_edits.py
 .DS_Store
 
 ## Python gitignore

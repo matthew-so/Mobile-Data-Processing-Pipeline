@@ -5,7 +5,6 @@ python3 driver.py \
     --features_file configs/features_sign.json \
     --prototypes_file configs/prototypes.json \
     --train_iters 30 \
-    --train_type five_sign \
     --wordlist signs.txt \
     --random_state 43556 \
     --hmm_insertion_penalty -200

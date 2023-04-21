@@ -299,6 +299,8 @@ if __name__ == '__main__':
         PADDING_DIGITS = parsed.paddingDigits
 
     input_files, output_files = enumerate_files(INPUT_DIRECTORY, processTenSign=parsed.processTenSign)
+    print(input_files)
+    print(output_files)
 
     start_time = time.time()
     df_multithreaded(input_files, output_files)

@@ -463,5 +463,5 @@
         "delta_left_landmark_20_y",
         "delta_left_landmark_20_z"
     ],
-    "features_dir": "/root/Mobile-Data-Processing-Pipeline/mediapipe_parquet"
+    "features_dir": "/root/Mobile-Data-Processing-Pipeline/mediapipe"
 }

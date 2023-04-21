@@ -177,7 +177,7 @@ def select_features(input_filepath: str, features_to_extract: list,
         #     print('Data Frame Info: ', len(data[frame]['landmarks'][hand]))
         #     print()
 
-        if data[frame]['pose']:
+        if 'pose' in data[frame] and data[frame]['pose']:
 
             right_hand = np.array([data[frame]['pose'][str(i)] for i in range(11,22,2)]).reshape((-1,))
             left_hand = np.array([data[frame]['pose'][str(i)] for i in range(12,23,2)]).reshape((-1,))
@@ -187,16 +187,16 @@ def select_features(input_filepath: str, features_to_extract: list,
             noses[0, frame, :] = curr_nose
         
         if data[frame]['landmarks']:
-            if data[frame]['pose'] is None:
-                raise Exception('Red Alert: Our assumption that landmarks are only provided when we have boxes is incorrect')
-            else:
-                visible_landmarks = [data[frame]['landmarks']["0"], data[frame]['landmarks']["1"]]
-                if visible_landmarks[0]:
-                    left_landmark = np.array([visible_landmarks[0][str(i)] for i in range(21)]).reshape((-1,))
-                    landmarks[1, frame, :] = left_landmark
-                if visible_landmarks[1]:
-                    right_landmark = np.array([visible_landmarks[1][str(i)] for i in range(21)]).reshape((-1,))
-                    landmarks[0, frame, :] = right_landmark
+            # if data[frame]['pose'] is None:
+            #     raise Exception('Red Alert: Our assumption that landmarks are only provided when we have boxes is incorrect')
+            # else:
+            visible_landmarks = [data[frame]['landmarks']["0"], data[frame]['landmarks']["1"]]
+            if visible_landmarks[0]:
+                left_landmark = np.array([visible_landmarks[0][str(i)] for i in range(21)]).reshape((-1,))
+                landmarks[1, frame, :] = left_landmark
+            if visible_landmarks[1]:
+                right_landmark = np.array([visible_landmarks[1][str(i)] for i in range(21)]).reshape((-1,))
+                landmarks[0, frame, :] = right_landmark
                     
     select_hands = np.any(['hand' 
                            in feature 
