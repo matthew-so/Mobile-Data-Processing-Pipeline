@@ -33,7 +33,7 @@ def parse_main_args():
     #Arguments for training
     parser.add_argument('--train_iters', nargs='*', type=int, default=[20, 50, 80])
     parser.add_argument('--hmm_insertion_penalty', default=-10)
-    parser.add_argument('--n_states', type=int, default=13)
+    parser.add_argument('--n_states', type=int, default=8)
     parser.add_argument('--mean', type=float, default=0.0)
     parser.add_argument('--variance', type=float, default=1.0)
     parser.add_argument('--transition_prob', type=float, default=0.6)
@@ -92,8 +92,6 @@ def parse_grid_search_args():
                         help='Number of states in the HMM. Can be passed as a list.')
     parser.add_argument('--n_folds', nargs='*', type=int, default=[5],
                         help='Number of folds for cross_val. Can be passed as a list.') # Called folds in driver.py/train.py/main.py
-    parser.add_argument('--variances', nargs='*', type=float, default=[1e-5],
-                        help='Initial Variance in HMM. Can be passed as a list.')
     parser.add_argument('--test_type', type=str, default='test_on_train',
                         choices=['test_on_train', 'cross_val'],
                         help='Test Type. Currently supports cross_val and test_on_train.')

@@ -1,4 +1,9 @@
 {
+  "gtsignstudy4a.8041": {
+    "buffer_start": -0.5,
+    "buffer_end": 0.5,
+    "invert": false
+  },
   "4a.8051": {
     "buffer_start": -1.2,
     "buffer_end": 0.5,

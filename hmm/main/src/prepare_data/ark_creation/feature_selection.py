@@ -19,6 +19,7 @@ import pandas as pd
 from scipy import interpolate
 from scipy.spatial.distance import cdist
 from multiprocess import Lock
+from json import JSONDecodeError
 
 log_lock = Lock()
 
@@ -36,8 +37,12 @@ def _load_json(json_file: str) -> dict:
         Data loaded from JSON.
     """
     
+    data = None
     with open(json_file, 'r') as data_file:
-        data = json.loads(data_file.read())
+        try:
+            data = json.loads(data_file.read())
+        except JSONDecodeError:
+            print("Problem File: ", json_file)
         
     return data
 

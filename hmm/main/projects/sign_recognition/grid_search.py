@@ -11,9 +11,7 @@ RESULTS_DIR = 'hresults'
 STATE_IDX = 0
 FOLD_IDX = 1
 HMM_TYPE_IDX = 2
-VAR_IDX = 3
-GMM_MIX_IDX = 4
-GMM_PATT_IDX = 5
+GMM_MIX_IDX = 3
 
 def get_alphabet():
     return list(map(chr, range(97, 123))) + ['sil0','sil1']
@@ -58,17 +56,15 @@ def run_command(base_command, args, tup, results_filepath=None):
     n_states = tup[STATE_IDX]
     n_folds = tup[FOLD_IDX]
     hmm_step_type = tup[HMM_TYPE_IDX]
-    variance = tup[VAR_IDX]
     gmm_mix = tup[GMM_MIX_IDX]
     
     if results_filepath:
         with open(results_filepath, 'a') as f:
             f.write(
-                'Num States: {n} | Num Folds: {f} | HMM Step Type: {h} | Variance: {v} | GMM Num Mixes: {gm}\n'.format(
+                'Num States: {n} | Num Folds: {f} | HMM Step Type: {h} | GMM Num Mixes: {gm}\n'.format(
                     n=n_states,
                     f=n_folds,
                     h=hmm_step_type,
-                    v=variance,
                     gm=gmm_mix
                 )
             )
@@ -82,7 +78,6 @@ def run_command(base_command, args, tup, results_filepath=None):
         command += ' \\\n\t--n_splits {f}'.format(f=n_folds)
     
     command += ' \\\n\t--hmm_step_type {h}'.format(h=hmm_step_type)
-    command += ' \\\n\t--variance {v}'.format(v=variance)
     
     if gmm_mix is not None:
         command += ' \\\n\t--gmm_mix {gm}'.format(gm=gmm_mix)
@@ -101,7 +96,6 @@ if __name__ == "__main__":
             args.n_states,
             args.n_folds,
             args.hmm_step_types,
-            args.variances,
             args.gmm_mixes,
         )
     )
@@ -113,6 +107,5 @@ if __name__ == "__main__":
 
     base_command = get_base_command(command_file)
     for tup in grid_search_list:
-        # results_filepath = get_results_filepath(tup)
         run_command(base_command, args, tup)
 

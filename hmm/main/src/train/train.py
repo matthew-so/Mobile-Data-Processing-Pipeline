@@ -107,7 +107,7 @@ def train(
         # HRest_command = (f'HRest -A -i 60 -C configs/hrest.conf -v 0.1 -I '
         #                  f'all_labels.mlf -M models/{fold}hmm1 -S lists/{fold}train.data '
         #                  f'{hmm0_file} >> logs/{fold}train.log')
-        HRest_command = (f'HRest -A -i 5 -C configs/hrest.conf -v 0.1 -I '
+        HRest_command = (f'HRest -A -i 5 -C configs/hrest.conf -v 0.001 -I '
                          f'all_labels.mlf -M models/{fold}hmm1 -S lists/{fold}train.data '
                          f'{hmm0_file} >> logs/{fold}train.log')
         os.system(HRest_command)

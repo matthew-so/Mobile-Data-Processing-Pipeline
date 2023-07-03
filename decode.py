@@ -71,6 +71,7 @@ def get_image_description(exifdata):
         # print(f"{tag:25}: {data}")
         if tag == "ImageDescription":
             description = data
+    # print(description)
     return description
 
 

@@ -59,7 +59,7 @@ def extract_features(features_config: dict, ark_dir: str, verbose: bool, is_sele
    features_extension = features_filename.split('.')[-1]
    features_df = None
 
-   ark_filename = features_filename.replace(features_extension, 'ark')
+   ark_filename = features_filename.replace(features_extension, 'ark').lower()
    ark_filepath = os.path.join(ark_dir, ark_filename)
    title = ark_filename.replace('.ark', "")
    
