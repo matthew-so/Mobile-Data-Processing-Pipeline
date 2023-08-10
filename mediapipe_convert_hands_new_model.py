@@ -62,6 +62,11 @@ FILE_LABEL = 'singlesign'
 # Can be specified at runtime via the --paddingDigits option.
 PADDING_DIGITS = 8
 
+# MediaPipe Hands options
+BaseOptions = mp.tasks.BaseOptions
+HandLandmarker = mp.tasks.vision.HandLandmarker
+HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
+VisionRunningMode = mp.tasks.vision.RunningMode
 
 # Detects the features within our videos using MediaPipe. This is
 # copied in part from the MediaPipe website and in part from the
@@ -74,6 +79,7 @@ def detect_features(video_file, output_file):
         min_tracking_confidence=MP_TRACK_CONFIDENCE
     ) as hands:
         video = cv.VideoCapture(video_file)
+        fps = video.get(cv.CAP_PROP_FPS)
         features = dict()
         curr_frame = 0
         
@@ -81,53 +87,68 @@ def detect_features(video_file, output_file):
         while video.isOpened():
             success, image = video.read()
             if not success:
-                print(f'Frame {curr_frame} of {video_file} was not readable')
+                if curr_frame != video.get(cv.CAP_PROP_FRAME_COUNT):
+                    print(f'Frame {curr_frame} of {video_file} was not readable')
                 break
 
             image.flags.writeable = False
             image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-            results = hands.process(image)
 
-            # if results.left_hand_landmarks is not None:
-            #     print("Results (Left Hand Landmarks) is not None.")
-            # else:
-            #     print("Results (Left Hand Landmarks) is None.")
-            # 
-            # if results.right_hand_landmarks is not None:
-            #     print("Results (Right Hand Landmarks) is not None.")
-            # else:
-            #     print("Results (Right Hand Landmarks) is None.")
+            options = HandLandmarkerOptions(
+                base_options=BaseOptions(model_asset_path='hand_landmarker.task'),
+                running_mode=VisionRunningMode.VIDEO
+            )
 
-            # print()
+            with HandLandmarker.create_from_options(options) as landmarker:
+                # The landmarker is initialized. Use it here.
+                # ...
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
+                results = landmarker.detect_for_video(mp_image, int(float(curr_frame)/fps*1000))
 
-            # Available features: results.face_landmarks, results.left_hand_landmarks,
-            # results.right_hand_landmarks, results.pose_landmarks
-            multi_hand_landmarks = results.multi_hand_landmarks
-            multi_handedness = results.multi_handedness
+                # print(results)
 
-            curr_frame_features = {"landmarks": {0: {}, 1: {}}}
+                # Available features: results.face_landmarks, results.left_hand_landmarks,
+                # results.right_hand_landmarks, results.pose_landmarks
+                # multi_hand_landmarks = results.multi_hand_landmarks
+                # multi_handedness = results.multi_handedness
 
-            feature_location = [
-                curr_frame_features["landmarks"][0],
-                curr_frame_features["landmarks"][1],
-            ]
+                curr_frame_features = {"landmarks": {0: {}, 1: {}}}
 
-            if multi_hand_landmarks is not None:
-                for index, curr_landmarks in enumerate(multi_hand_landmarks):
-                    feature_num = 0
-                    if curr_landmarks is None:
-                        continue
-                    handedness_dict = MessageToDict(multi_handedness[index])
-                    if handedness_dict['classification'][0]['label'] == "Left":
+                handedness = results.handedness
+                hand_landmarks = results.hand_landmarks
+                world_landmarks = results.hand_world_landmarks
+
+                for hand_type, local_landmark, global_landmark in zip(handedness, hand_landmarks, world_landmarks):
+                    if hand_type[0].category_name == "Left":
                         feature_location = curr_frame_features["landmarks"][0]
                     else:
                         feature_location = curr_frame_features["landmarks"][1]
-                    for curr_point in curr_landmarks.landmark:
+                    feature_num = 0
+                    for curr_point in local_landmark:
                         feature_location[feature_num] = [curr_point.x, curr_point.y, curr_point.z]
                         feature_num += 1
 
-            features[curr_frame] = curr_frame_features
-            curr_frame += 1
+                # feature_location = [
+                #     curr_frame_features["landmarks"][0],
+                #     curr_frame_features["landmarks"][1],
+                # ]
+
+                # if multi_hand_landmarks is not None:
+                #     for index, curr_landmarks in enumerate(multi_hand_landmarks):
+                #         feature_num = 0
+                #         if curr_landmarks is None:
+                #             continue
+                #         handedness_dict = MessageToDict(multi_handedness[index])
+                #         if handedness_dict['classification'][0]['label'] == "Left":
+                #             feature_location = curr_frame_features["landmarks"][0]
+                #         else:
+                #             feature_location = curr_frame_features["landmarks"][1]
+                #         for curr_point in curr_landmarks.landmark:
+                #             feature_location[feature_num] = [curr_point.x, curr_point.y, curr_point.z]
+                #             feature_num += 1
+
+                features[curr_frame] = curr_frame_features
+                curr_frame += 1
 
         video.release()
 
@@ -144,7 +165,7 @@ def detect_features(video_file, output_file):
 
 
 # Auto-detect number of CPU threads?
-THREADS = 32
+THREADS = 1
 lock = threading.Semaphore(THREADS)
 
 

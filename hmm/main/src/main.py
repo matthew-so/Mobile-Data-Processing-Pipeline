@@ -75,8 +75,8 @@ def get_video(filepath):
 
 def crossValVerificationFold(train_data: list, test_data: list, args: object, fold: int):
     print(f"Current split = {str(fold)}. Current Test data Size = {len(test_data)}")
-    ogDataFolder = "data"
-    currDataFolder = os.path.join("data", str(fold))
+    ogDataFolder = args.data_path
+    currDataFolder = os.path.join(args.data_path, str(fold))
     trainFiles = [i.split("/")[-1].replace(".htk", "") for i in train_data]
     testFiles = [i.split("/")[-1].replace(".htk", "") for i in test_data]
     allFiles = trainFiles + testFiles
@@ -179,8 +179,8 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
         f"Current Train data Size = {len(train_data)}."
     )
     print(info_string)
-    ogDataFolder = "data"
-    currDataFolder = os.path.join("data", str(fold))
+    ogDataFolder = args.data_path
+    currDataFolder = os.path.join(args.data_path, str(fold))
     trainFiles = [i.split("/")[-1].replace(".htk", "") for i in train_data]
     testFiles = [i.split("/")[-1].replace(".htk", "") for i in test_data]
     allFiles = trainFiles + testFiles
@@ -222,20 +222,20 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
 def test_on_train(args, all_results, fold="", five_set=None):
     if not args.users:
         if not five_set:
-            htk_filepaths = glob.glob('data/htk/*.htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*.htk'))
         else:
             htk_filepaths = []
             for sign in five_set:
-                htk_filepaths.extend(glob.glob('data/htk/*.{}.*.htk'.format(sign)))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, 'htk/*.{}.*.htk'.format(sign))))
     else:
         htk_filepaths = []
         if not five_set:
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '{}*.htk'.format(user))))
         else:
             for user in args.users:
                 for sign in five_set:
-                    htk_filepaths.extend(glob.glob(os.path.join("data/htk", '{}.{}.*.htk'.format(user, sign))))
+                    htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '{}.{}.*.htk'.format(user, sign))))
     
     create_data_lists(htk_filepaths, htk_filepaths, args.phrase_len, fold=fold)
     
@@ -384,11 +384,11 @@ def main():
         print("You have invoked parallel cross validation. Be prepared for dancing progress bars!")
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*.htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*.htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
         
         #for filepath in htk_filepaths:
         #    split_path = filepath.split('/')[-1]
@@ -463,11 +463,11 @@ def main():
         sentence_errors = 0
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath
@@ -559,11 +559,11 @@ def main():
     elif args.test_type == 'standard':
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
         
         phrases = [' '.join(filepath.split('.')[1].split('_'))
             for filepath
@@ -622,11 +622,11 @@ def main():
         sentence_errors = 0        
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath
@@ -676,11 +676,11 @@ def main():
         sentence_errors = 0
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath
@@ -730,11 +730,11 @@ def main():
         sentence_errors = 0
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath
@@ -794,11 +794,11 @@ def main():
         sentence_errors = 0
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath
@@ -859,11 +859,11 @@ def main():
         sentence_errors = 0
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath
@@ -939,11 +939,11 @@ def main():
         sentence_errors = 0
 
         if not args.users:
-            htk_filepaths = glob.glob('data/htk/*htk')
+            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*htk'))
         else:
             htk_filepaths = []
             for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join("data/htk", '*{}*.htk'.format(user))))
+                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '*{}*.htk'.format(user))))
 
         phrases = [' '.join(filepath.split('.')[1].split("_"))
             for filepath

@@ -160,7 +160,8 @@ def select_features(input_filepath: str, features_to_extract: list,
         log_lock.release()
         
         return None
-
+    
+    # print("Frames: ", frames)
     for frame in sorted(data.keys()):
 
         if use_optical_flow and data[frame]['optical_flow'] is not None:
@@ -281,10 +282,10 @@ def select_features(input_filepath: str, features_to_extract: list,
     noses = np.reshape(noses, (-1, 3))
     all_features = np.concatenate([hands, landmarks, noses, optical_flow], axis=1)
     df = pd.DataFrame(all_features, columns=cols)
-    df_lm = df.loc[:, df.columns.isin(features_to_extract)]
+    # df_lm = df.loc[:, df.columns.isin(features_to_extract)]
     # print("DF Shape (1): ", df.shape)
-    df = df.replace(0, np.nan)
-    df_lm = df_lm.replace(0, np.nan)
+    # df = df.replace(0, np.nan)
+    # df_lm = df_lm.replace(0, np.nan)
     # print("DF Shape (2): ", df.shape)
 
     if select_hands and do_interpolate:
@@ -358,6 +359,7 @@ def select_features(input_filepath: str, features_to_extract: list,
     df = df.loc[:, df.columns.isin(features_to_extract)]
     # ipdb.set_trace()
     # print("DF Shape (4): ", df.shape)
+    # print("DF: ", df)
     if drop_na:
         df = df.dropna(axis=0)
     # print("DF Shape (5): ", df.shape)

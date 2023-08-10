@@ -12,6 +12,7 @@ def parse_main_args():
     parser.add_argument('--prototypes_file', type=str, default='configs/prototypes.json')
     parser.add_argument('--wordlist', type=str, default='wordList')
     parser.add_argument('--is_single_word', action='store_true', help='Useful for prepare_data usage only.')
+    parser.add_argument('--data_path', type=str, default='data')
 
     # Arguments for create_data_lists()
     parser.add_argument('--test_type', type=str, default='test_on_train',

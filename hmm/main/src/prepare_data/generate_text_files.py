@@ -63,8 +63,10 @@ def _get_unique_words(features_dir: str) -> set:
 
     for features_filepath in features_filepaths:
         filename = features_filepath.split('/')[-1]
-        phrase = filename.rsplit('.', 4)[split_index].split('_')
+        phrase = filename.rsplit('-', 3)[split_index].split('_')
         phrase = [word.lower() for word in phrase]
+        # if phrase[-1] == "47e2":
+        #     print("Mystery File: ", filename)
         unique_words = unique_words.union(phrase)
 
     unique_words = sorted(unique_words)
@@ -191,7 +193,7 @@ def _generate_grammar(unique_words: set, features_dir: str, isFingerspelling: bo
 
     for features_filepath in features_filepaths:
         filename = features_filepath.split('/')[-1]
-        phrase = filename.rsplit('.', 4)[split_index].split('_')
+        phrase = filename.rsplit('-', 3)[split_index].split('_')
         phrase = [word.lower() for word in phrase]
         phrase_len = len(phrase)
         max_phrase_len = max(phrase_len, max_phrase_len)
@@ -267,15 +269,15 @@ def _generate_mlf_file(isFingerspelling: bool) -> None:
 
     htk_filepaths = os.path.join('data', 'htk', '*.htk')
     filenames = glob.glob(htk_filepaths)
+    split_index = 1
 
     with open('all_labels.mlf', 'w') as f:
         
         f.write('#!MLF!#\n')
 
         for filename in filenames:
-
             label = filename.split('/')[-1].replace('htk', 'lab')
-            phrase = label.rsplit('.', 4)[1].split('_')
+            phrase = label.rsplit('-', 3)[split_index].split('_')
 
             f.write('"*/{}"\n'.format(label))
             f.write('sil0\n')
