@@ -28,15 +28,16 @@ def run_kaldi_command(htk_dir: str, ark_file: str):
     os.system(kaldi_command)
 
 def create_htk_files(
-    htk_dir: str = os.path.join('data', 'htk'),
-    ark_dir: str = os.path.join('data', 'ark', '*.ark'),
+    data_path: str,
     num_threads:int = 32
 ) -> None:
     """Converts .ark files to .htk files for use by HTK.
     """
     # if os.path.exists(htk_dir):
     #     shutil.rmtree(htk_dir)
-    
+    htk_dir = os.path.join(data_path, 'htk')
+    ark_dir = os.path.join(data_path, 'ark', '*.ark')
+
     if not os.path.exists(htk_dir):
         os.makedirs(htk_dir)
 

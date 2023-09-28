@@ -505,6 +505,7 @@ if __name__ == "__main__":
     recording_count = defaultdict(int)
 
     for file in pbar:
+        print(file)
         filename = os.fsdecode(file)
 
         if filename.endswith(".zip"):

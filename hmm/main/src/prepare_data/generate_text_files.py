@@ -19,7 +19,17 @@ import string
 
 from numpy.lib.arraysetops import unique
 
-def generate_text_files(features_dir: str, isFingerspelling: bool, isSingleWord: bool, unique_words: set = None) -> None:
+ENTER = '!ENTER'
+EXIT = '!EXIT'
+
+def generate_text_files(
+    features_dir: str = 'configs/features_sign.json',
+    isFingerspelling: bool = False,
+    isSingleWord: bool = False,
+    isBigram: bool = False,
+    unique_words: set = None,
+    data_path: str = 'data',
+) -> None:
     """Creates all text files needed to train/test HMMs with HTK,
     including wordList, dict, grammar, and all_labels.mlf.
     
@@ -32,14 +42,39 @@ def generate_text_files(features_dir: str, isFingerspelling: bool, isSingleWord:
     if not unique_words:
         unique_words = _get_unique_words(features_dir)
 
-    _generate_word_list(unique_words, isFingerspelling)
+    _generate_word_list(
+        unique_words,
+        isFingerspelling,
+        isSingleWord,
+        os.path.join(data_path, 'wordList'),
+        data_path,
+    )
 
-    _generate_word_dict(unique_words, isFingerspelling)
+    _generate_word_dict(
+        unique_words,
+        isFingerspelling,
+        os.path.join(data_path, 'dict'),
+    )
 
-    _generate_grammar(unique_words, features_dir, isFingerspelling, isSingleWord)
+    _generate_mlf_file(
+        isFingerspelling,
+        isSingleWord,
+        os.path.join(data_path, 'all_labels.mlf'),
+        data_path,
+    )
 
-    _generate_mlf_file(isFingerspelling)
+    _generate_grammar(
+        unique_words,
+        features_dir,
+        data_path,
+        os.path.join(data_path, 'grammar.txt'),
+        isFingerspelling,
+        isSingleWord,
+        isBigram,
+    )
 
+def _get_basename(filen):
+    return os.path.splitext(os.path.basename(filen))[0]
 
 def _get_unique_words(features_dir: str) -> set:
     """Gets all unique words from a data set.
@@ -73,8 +108,21 @@ def _get_unique_words(features_dir: str) -> set:
     print("Unique Words: ", unique_words)
     return unique_words
 
+def _write_word_list(word_list: list, wordList_file):
+    with open(wordList_file, 'w') as f:
+        
+        for word in word_list[:-1]:
+            f.write('{}\n'.format(word))
+        f.write('{}'.format(word_list[-1]))
+    
 
-def _generate_word_list(unique_words: list, is_fingerspelling: bool) -> None:
+def _generate_word_list(
+    unique_words: list,
+    is_fingerspelling: bool,
+    isSingleWord: bool,
+    wordList_file: str,
+    data_path: str
+) -> None:
     """Generates wordList file containing all unique words and silences.
 
     Parameters
@@ -83,19 +131,27 @@ def _generate_word_list(unique_words: list, is_fingerspelling: bool) -> None:
         Set of all words found in the training data.
     """
     if is_fingerspelling:
-        word_list = list(string.ascii_lowercase)
+        if isSingleWord:
+            word_list = list(string.ascii_lowercase)
+        else:
+            wl_basename = _get_basename(wordList_file)
+            
+            word_list = list(string.ascii_lowercase)
+            wordList_file = os.path.join(data_path, wl_basename + '_letter')
+            
+            wordList_file_2 = os.path.join(data_path, wl_basename + '_word')
+            word_list_2 = list(unique_words)
+            word_list_2 += [ENTER, EXIT]
+            
+            _write_word_list(word_list_2, wordList_file_2)
     else:
         word_list = list(unique_words)
-    word_list += ['sil0', 'sil1']
-
-    with open('wordList', 'w') as f:
-        
-        for word in word_list[:-1]:
-            f.write('{}\n'.format(word))
-        f.write('{}'.format(word_list[-1]))
+    
+    word_list += [ENTER, EXIT]
+    _write_word_list(word_list, wordList_file)
 
 
-def _generate_word_dict(unique_words: list, is_fingerspelling: bool) -> None:
+def _generate_word_dict(unique_words: list, is_fingerspelling: bool, dict_file: str) -> None:
     """Generates dict file containing key-value pairs of words. In our
     case, the key and value are both the single, unique word.
 
@@ -106,12 +162,12 @@ def _generate_word_dict(unique_words: list, is_fingerspelling: bool) -> None:
     """
     
     word_list = list(unique_words)
-    word_list += ['sil0', 'sil1']
+    word_list += [ENTER, EXIT]
 
-    with open('dict', 'w') as f:
+    with open(dict_file, 'w') as f:
 
-        f.write('SENT-START [] sil0\n')
-        f.write('SENT-END [] sil1\n')
+        f.write(f'SENT-START [] {ENTER}\n')
+        f.write(f'SENT-END [] {EXIT}\n')
         
         for word in word_list[:-2]:
             if is_fingerspelling:
@@ -120,21 +176,22 @@ def _generate_word_dict(unique_words: list, is_fingerspelling: bool) -> None:
                 f.write('{} {}\n'.format(word, word))
         f.write('{} {}\n'.format(word_list[-2], word_list[-2]))
         f.write('{} {}\n'.format(word_list[-1], word_list[-1]))
-    if is_fingerspelling:
-        with open('dict_tri', 'w') as f:
-            f.write('SENT-START [] sil0\n')
-            f.write('SENT-END [] sil1\n')
-            
-            for word in word_list[:-2]:
-                letters = list(word)
-                letters.insert(0, "sil0")
-                letters.append("sil1")
-                f.write('{} '.format(letters[0]))
-                for i in range(len(letters)-2):
-                    f.write('{}+{}-{} '.format(letters[i], letters[i+1], letters[i+2]))
-                f.write('{}\n'.format(letters[-1]))
-            f.write('{} {}\n'.format(word_list[-2], word_list[-2]))
-            f.write('{} {}\n'.format(word_list[-1], word_list[-1]))
+    
+    # if is_fingerspelling:
+    #     with open('dict_tri', 'w') as f:
+    #         f.write(f'SENT-START [] {ENTER}\n')
+    #         f.write(f'SENT-END [] {EXIT}\n')
+    #         
+    #         for word in word_list[:-2]:
+    #             letters = list(word)
+    #             letters.insert(0, ENTER)
+    #             letters.append(EXIT)
+    #             f.write('{} '.format(letters[0]))
+    #             for i in range(len(letters)-2):
+    #                 f.write('{}+{}-{} '.format(letters[i], letters[i+1], letters[i+2]))
+    #             f.write('{}\n'.format(letters[-1]))
+    #         f.write('{} {}\n'.format(word_list[-2], word_list[-2]))
+    #         f.write('{} {}\n'.format(word_list[-1], word_list[-1]))
 
 def _write_grammar_line(
         f: TextIOWrapper, part_of_speech: str, words: list, n='') -> None:
@@ -162,7 +219,15 @@ def _write_grammar_line(
     f.write('{};\n'.format(words[-1]))
 
 
-def _generate_grammar(unique_words: set, features_dir: str, isFingerspelling: bool, isSingleWord: bool) -> None:
+def _generate_grammar(
+    unique_words: set,
+    features_dir: str,
+    data_path: str,
+    grammar_file: str,
+    isFingerspelling :bool,
+    isSingleWord: bool,
+    isBigram: bool,
+) -> None:
     """Creates rule-based grammar depending on the length of the longest
     phrase of the dataset.
 
@@ -172,8 +237,10 @@ def _generate_grammar(unique_words: set, features_dir: str, isFingerspelling: bo
         Unix style pathname pattern pointing to all the features
         extracted from training data.
     """
-    if isFingerspelling or isSingleWord:
-        with open('grammar.txt', 'w') as f:
+    
+
+    if (isFingerspelling or isSingleWord) and not(isBigram):
+        with open(grammar_file, 'w') as f:
             _write_grammar_line(f, 'word', unique_words)
             f.write('\n')
             f.write('(SENT-START $word SENT-END)')
@@ -182,6 +249,16 @@ def _generate_grammar(unique_words: set, features_dir: str, isFingerspelling: bo
         print("DO")
         return
     
+    if isBigram:
+        if isFingerspelling and not(isSingleWord):
+            all_labels_file = os.path.join(data_path, 'all_labels_word.mlf')
+            wordList_file = os.path.join(data_path, 'wordList_word')
+        else:
+            all_labels_file = os.path.join(data_path, 'all_labels.mlf')
+            wordList_file = os.path.join(data_path, 'wordList')
+        os.system(f'HLStats -b {grammar_file} -o {wordList_file} {all_labels_file}')
+        return
+
     subjects = set()
     prepositions = set()
     objects = set()
@@ -227,7 +304,7 @@ def _generate_grammar(unique_words: set, features_dir: str, isFingerspelling: bo
     objects = list(objects)
     adjectives = list(adjectives)
 
-    with open('grammar.txt', 'w') as f:
+    with open(grammar_file, 'w') as f:
     
         if max_phrase_len == 3:
 
@@ -261,17 +338,8 @@ def _generate_grammar(unique_words: set, features_dir: str, isFingerspelling: bo
 
     f.close()
 
-
-def _generate_mlf_file(isFingerspelling: bool) -> None:
-    """Creates all_labels.mlf file that contains every phrase in the 
-    dataset.
-    """
-
-    htk_filepaths = os.path.join('data', 'htk', '*.htk')
-    filenames = glob.glob(htk_filepaths)
-    split_index = 1
-
-    with open('all_labels.mlf', 'w') as f:
+def _write_fs_mlf(filenames: list, mlf_file: str, split_index: int):
+    with open(mlf_file, 'w') as f:
         
         f.write('#!MLF!#\n')
 
@@ -280,15 +348,57 @@ def _generate_mlf_file(isFingerspelling: bool) -> None:
             phrase = label.rsplit('-', 3)[split_index].split('_')
 
             f.write('"*/{}"\n'.format(label))
-            f.write('sil0\n')
+            f.write(f'{ENTER}\n')
 
             for word in phrase:
-                if isFingerspelling:
-                    f.write('{}\n'.format('\n'.join(word)))
-                    # f.write('{}\n'.format('\n'.join(word.lower())))
-                else:
-                    f.write('{}\n'.format(word))
-                    # f.write('{}\n'.format(word.lower()))
+                f.write('{}\n'.format('\n'.join(word)))
 
-            f.write('sil1\n')
+            f.write(f'{EXIT}\n')
             f.write('.\n')
+    
+
+def _write_mlf(filenames: list, mlf_file: str, split_index: int):
+    with open(mlf_file, 'w') as f:
+        
+        f.write('#!MLF!#\n')
+
+        for filename in filenames:
+            label = filename.split('/')[-1].replace('htk', 'lab')
+            phrase = label.rsplit('-', 3)[split_index].split('_')
+
+            f.write('"*/{}"\n'.format(label))
+            f.write(f'{ENTER}\n')
+
+            for word in phrase:
+                f.write('{}\n'.format(word))
+
+            f.write(f'{EXIT}\n')
+            f.write('.\n')
+
+def _generate_mlf_file(isFingerspelling: bool, isSingleWord: bool, mlf_file: str, data_path: str) -> None:
+    """Creates all_labels.mlf file that contains every phrase in the 
+    dataset.
+    """
+
+    htk_filepaths = os.path.join(data_path, 'htk', '*.htk')
+    filenames = glob.glob(htk_filepaths)
+    split_index = 1
+    
+    if not(isFingerspelling):
+        _write_mlf(filenames, mlf_File, split_index)
+    else:
+        if isSingleWord:
+            _write_fs_mlf(filenames, mlf_file, split_index)
+        else:
+            mlf_filename = _get_basename(mlf_file)
+            word_mlf_file = os.path.join(
+                data_path,
+                mlf_filename + '_word.mlf'
+            )
+            letter_mlf_file = os.path.join(
+                data_path,
+                mlf_filename + '_letter.mlf'
+            )
+            _write_mlf(filenames, word_mlf_file, split_index)
+            _write_fs_mlf(filenames, letter_mlf_file, split_index)
+

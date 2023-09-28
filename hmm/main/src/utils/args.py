@@ -5,13 +5,21 @@ def parse_main_args():
     ############################## ARGUMENTS #####################################
     #Important
     parser.add_argument('--prepare_data', action='store_true')
+    parser.add_argument('--min_phrase_len', type=int, default=3, help='Minimum allowed phrase length for data preparation (inclusive range)')
+    parser.add_argument('--max_phrase_len', type=int, default=5, help='Maximum allowed phrase length for data preparation (inclusive range)')
     parser.add_argument('--save_results', action='store_true')
     parser.add_argument('--save_results_file', type=str,
                         default='all_results.json')
     parser.add_argument('--features_file', type=str, default='configs/features.json')
     parser.add_argument('--prototypes_file', type=str, default='configs/prototypes.json')
-    parser.add_argument('--wordlist', type=str, default='wordList')
-    parser.add_argument('--is_single_word', action='store_true', help='Useful for prepare_data usage only.')
+    parser.add_argument('--wordList', type=str, default='data/wordList')
+    parser.add_argument('--hBuildWordList', type=str, default=None)
+    parser.add_argument('--dict', type=str, default='data/dict')
+    parser.add_argument('--grammar_file', type=str, default='data/grammar.txt')
+    parser.add_argument('--all_labels_file', type=str, default='data/all_labels.mlf')
+    parser.add_argument('--is_fingerspelling', action='store_true', help='For prepare_data usage only..')
+    parser.add_argument('--is_single_word', action='store_true', help='For prepare_data usage only.')
+    parser.add_argument('--is_bigram', action='store_true', help='For prepare_data usage only.')
     parser.add_argument('--data_path', type=str, default='data')
 
     # Arguments for create_data_lists()
@@ -45,8 +53,6 @@ def parse_main_args():
         default='single'
     )
     parser.add_argument('--gmm_mix', type=int, default=None)
-    parser.add_argument('--train_type', type=str, default='standard',
-                        choices=['standard', 'five_sign'], help='Type of training.')
     parser.add_argument('--signs', type=str, default='standard',help='')
 
     #Arguments for SBHMM

@@ -6,6 +6,7 @@ Methods
 prepare_data
 """
 import os
+import shutil
 import sys
 import glob
 import argparse
@@ -19,11 +20,13 @@ from .generate_text_files import generate_text_files
 def prepare_data(
     features_config: dict,
     users: list,
-    phrase_len:list=[3,4,5],
-    prediction_len:list=[3,4,5],
-    isFingerspelling:bool=False,
-    isSingleWord:bool=False,
-    num_threads:int=32
+    data_path: str='data',
+    phrase_len: list=[3,4,5],
+    prediction_len: list=[3,4,5],
+    isFingerspelling: bool=False,
+    isSingleWord: bool=False,
+    isBigram: bool=False,
+    num_threads: int=32
 ) -> None:
 
     """Prepares training data. Creates .ark files, .htk files, wordList,
@@ -35,18 +38,27 @@ def prepare_data(
         A dictionary defining which features to use when creating the 
         data files.
     """
+    if os.path.exists(data_path):
+        shutil.rmtree(data_path)
+
     create_ark_files(
-        features_config, users, [1], verbose=False, is_select_features=True,
-        use_optical_flow=False, num_threads=num_threads
+        features_config, users, phrase_len=phrase_len, verbose=False, is_select_features=True,
+        use_optical_flow=False, num_threads=num_threads, data_path=data_path
     )
     print('.ark files created')
 
     print('Creating .htk files')
-    create_htk_files(num_threads=num_threads)
+    create_htk_files(data_path=data_path, num_threads=num_threads)
     print('.htk files created')
 
     print('Creating .txt files')
-    generate_text_files(features_config["features_dir"], isFingerspelling, isSingleWord)
+    generate_text_files(
+        features_config["features_dir"],
+        isFingerspelling=isFingerspelling,
+        isSingleWord=isSingleWord,
+        isBigram=isBigram,
+        data_path=data_path
+    )
     print('.txt files created')
     
-    # print("Data already generated, skipping data generation")
+    print("Data already generated, skipping data generation")

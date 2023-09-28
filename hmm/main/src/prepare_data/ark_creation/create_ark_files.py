@@ -82,8 +82,12 @@ def extract_features(features_config: dict, ark_dir: str, verbose: bool, is_sele
        features_rows[num_rows] += 1
        features_rows_lock.release()
 
+def _get_phrase_list(feature_filepath):
+    filename = os.path.basename(feature_filepath)
+    return filename.split('-')[1].split('_')
+
 def create_ark_files(features_config: dict, users: list, phrase_len: list, verbose: bool, 
-                is_select_features: bool, use_optical_flow: bool, num_threads: int) -> None:
+                is_select_features: bool, use_optical_flow: bool, num_threads: int, data_path: str) -> None:
     """Creates .ark files needed as intermediate step to creating .htk
     files
 
@@ -96,7 +100,7 @@ def create_ark_files(features_config: dict, users: list, phrase_len: list, verbo
         Whether to print output during process.
     """
 
-    ark_dir = os.path.join('data', 'ark')
+    ark_dir = os.path.join(data_path, 'ark')
     
     # if os.path.exists(ark_dir):
     #     shutil.rmtree(ark_dir)
@@ -115,7 +119,8 @@ def create_ark_files(features_config: dict, users: list, phrase_len: list, verbo
             features_filepaths.extend(glob.glob(os.path.join(features_config['features_dir'], '*{}_*'.format(user), '**', '*.data'), recursive = True))
             features_filepaths.extend(glob.glob(os.path.join(features_config['features_dir'], '*{}_*'.format(user), '**', '*.json'), recursive = True))
     
-    features_filepaths = list(filter(lambda x: len(x.rsplit('.', 4)[1].split('_')) in phrase_len, features_filepaths))
+    # features_filepaths = list(filter(lambda x: len(x.rsplit('.', 4)[1].split('_')) in phrase_len, features_filepaths))
+    features_filepaths = list(filter(lambda x: len(_get_phrase_list(x)) in phrase_len, features_filepaths))
     
     print(features_config['features_dir'])
     if is_select_features:

@@ -198,11 +198,11 @@ def select_features(input_filepath: str, features_to_extract: list,
             # else:
             visible_landmarks = [data[frame]['landmarks']["0"], data[frame]['landmarks']["1"]]
             if visible_landmarks[0]:
-                left_landmark = np.array([visible_landmarks[0][str(i)] for i in range(21)]).reshape((-1,))
-                landmarks[1, frame, :] = left_landmark
-            if visible_landmarks[1]:
-                right_landmark = np.array([visible_landmarks[1][str(i)] for i in range(21)]).reshape((-1,))
+                right_landmark = np.array([visible_landmarks[0][str(i)] for i in range(21)]).reshape((-1,))
                 landmarks[0, frame, :] = right_landmark
+            if visible_landmarks[1]:
+                left_landmark = np.array([visible_landmarks[1][str(i)] for i in range(21)]).reshape((-1,))
+                landmarks[1, frame, :] = left_landmark
                     
     select_hands = np.any(['hand' 
                            in feature 
@@ -271,7 +271,6 @@ def select_features(input_filepath: str, features_to_extract: list,
                 for coordinate
                 in coordinates]
 
-    # ipdb.set_trace()
     cols = hand_cols + landmark_cols + nose_cols + optical_flow_cols
     hands = np.concatenate([hands[0], hands[1]], axis=1)
     left_wrist = np.tile(landmarks[0,:,0:3], 21)
@@ -281,12 +280,9 @@ def select_features(input_filepath: str, features_to_extract: list,
     optical_flow = np.concatenate([optical_flow[0], optical_flow[1]], axis=1)
     noses = np.reshape(noses, (-1, 3))
     all_features = np.concatenate([hands, landmarks, noses, optical_flow], axis=1)
+    # print("All Features: ", all_features.shape)
     df = pd.DataFrame(all_features, columns=cols)
-    # df_lm = df.loc[:, df.columns.isin(features_to_extract)]
-    # print("DF Shape (1): ", df.shape)
-    # df = df.replace(0, np.nan)
-    # df_lm = df_lm.replace(0, np.nan)
-    # print("DF Shape (2): ", df.shape)
+    # print(df[landmark_cols])
 
     if select_hands and do_interpolate:
 
@@ -328,7 +324,6 @@ def select_features(input_filepath: str, features_to_extract: list,
         df[y_cols] = (df[y_cols].transpose() - noses[:,1]).transpose()
         df[z_cols] = (df[z_cols].transpose() - noses[:,2]).transpose()
 
-    # print("DF Shape (3): ", df.shape)
     df['horizontal_hand_dist'] = df['right_index_x'] - df['left_index_x']
     df['vertical_hand_dist'] = df['right_index_y'] - df['left_index_y']
 
@@ -357,17 +352,14 @@ def select_features(input_filepath: str, features_to_extract: list,
         df = _add_delta_col(df, col)
 
     df = df.loc[:, df.columns.isin(features_to_extract)]
-    # ipdb.set_trace()
-    # print("DF Shape (4): ", df.shape)
     # print("DF: ", df)
     if drop_na:
         df = df.dropna(axis=0)
-    # print("DF Shape (5): ", df.shape)
     df = df * scale
+    # print("DF: ", df)
     if square:
         df = pd.DataFrame(df.values*df.abs().values, columns=df.columns, index=df.index)
+    # print("DF: ", df)
     df = df.round(6)
     
-    # print("DF Shape (Last): ", df.shape)
-    # print()
     return df

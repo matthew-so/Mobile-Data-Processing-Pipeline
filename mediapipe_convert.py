@@ -115,6 +115,10 @@ def detect_features(video_file, output_file):
                     feature_location[index] = "None"
                 else:
                     for curr_point in curr_feature.landmark:
+                        print("x type: ", type(curr_point.x))
+                        print("y type: ", type(curr_point.y))
+                        print("z type: ", type(curr_point.z))
+                        print()
                         feature_location[index][feature_num] = [curr_point.x, curr_point.y, curr_point.z]
                         feature_num += 1
 

@@ -99,7 +99,9 @@ def crossValVerificationFold(train_data: list, test_data: list, args: object, fo
                     os.path.join(currDataFolder, "htk", i+".htk") for i in curr_test_files], args.phrase_len, fold)
 
         train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""), 
-                features_file=args.features_file, prototypes_file=args.prototypes_file)
+                is_bigram=args.is_bigram, features_file=args.features_file, prototypes_file=args.prototypes_file,
+                wordList_file=args.wordList, hBuild_wordList_file=args.hBuildWordList, grammar_file=args.grammar_file,
+                all_labels_file=args.all_labels_file)
         if args.verification_method == "zahoor":
             curr_average_ll_sign = return_average_ll_per_sign(args.end, args.hmm_insertion_penalty, 
                                                             args.beam_threshold, fold=os.path.join(str(fold), ""))
@@ -146,7 +148,9 @@ def crossValVerificationFold(train_data: list, test_data: list, args: object, fo
     create_data_lists([os.path.join(currDataFolder, "htk", i+".htk") for i in trainFiles], [
                     os.path.join(currDataFolder, "htk", i+".htk") for i in testFiles], args.phrase_len, fold)
     train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""),
-            features_file=args.features_file, prototypes_file=args.prototypes_file)
+            is_bigram=args.is_bigram, features_file=args.features_file, prototypes_file=args.prototypes_file,
+            wordList_file=args.wordList, hBuild_wordList_file=args.hBuildWordList, grammar_file=args.grammar_file,
+            all_labels_file=args.all_labels_file)
     if args.verification_method == "zahoor":
         positive, negative, false_positive, false_negative, test_log_likelihoods = verify_zahoor(args.end, args.hmm_insertion_penalty, classifier, 
                                                                         args.beam_threshold, fold=os.path.join(str(fold), ""))
@@ -199,9 +203,11 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
                 args.parallel_jobs, args.parallel_classifier_training, os.path.join(str(fold), ""))
     else:
         if run_train: train(args.train_iters, args.mean, args.variance, args.transition_prob, fold=os.path.join(str(fold), ""),
-                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, features_file=args.features_file,
-                prototypes_file = args.prototypes_file)
-        test(args.start, args.end, args.method, args.hmm_insertion_penalty, fold=os.path.join(str(fold), ""))
+                hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, is_bigram=args.is_bigram,
+                features_file=args.features_file, prototypes_file=args.prototypes_file, wordList_file=args.wordList,
+                hBuild_wordList_file=args.hBuildWordList, grammar_file=args.grammar_file, all_labels_file=args.all_labels_file)
+        test(args.start, args.end, args.method, args.hmm_insertion_penalty, fold=os.path.join(str(fold), ""),
+                wordList_file=args.wordList, dict_file=args.dict, all_labels_file=args.all_labels_file)
 
     if args.train_sbhmm:
         hresults_file = f'hresults/{os.path.join(str(fold), "")}res_hmm{args.sbhmm_iters[-1]-1}.txt'
@@ -219,23 +225,13 @@ def crossValFold(train_data: list, test_data: list, args: object, fold: int, run
 
     return [results['error'], results['sentence_error'], results['insertions'], results['deletions']]
 
-def test_on_train(args, all_results, fold="", five_set=None):
+def test_on_train(args, all_results, fold=""):
     if not args.users:
-        if not five_set:
-            htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*.htk'))
-        else:
-            htk_filepaths = []
-            for sign in five_set:
-                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, 'htk/*.{}.*.htk'.format(sign))))
+        htk_filepaths = glob.glob(os.path.join(args.data_path, 'htk/*.htk'))
     else:
         htk_filepaths = []
-        if not five_set:
-            for user in args.users:
-                htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '{}*.htk'.format(user))))
-        else:
-            for user in args.users:
-                for sign in five_set:
-                    htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '{}.{}.*.htk'.format(user, sign))))
+        for user in args.users:
+            htk_filepaths.extend(glob.glob(os.path.join(args.data_path, "htk", '{}*.htk'.format(user))))
     
     create_data_lists(htk_filepaths, htk_filepaths, args.phrase_len, fold=fold)
     
@@ -248,12 +244,15 @@ def test_on_train(args, all_results, fold="", five_set=None):
                 args.parallel_jobs, args.parallel_classifier_training)
     else:
         train(args.train_iters, args.mean, args.variance, args.transition_prob,
-            hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix,
+            hmm_step_type=args.hmm_step_type, gmm_mix=args.gmm_mix, is_bigram=args.is_bigram,
             is_triletter=args.model_type=="triletter", features_file=args.features_file,
-            prototypes_file=args.prototypes_file, fold=fold)
+            prototypes_file=args.prototypes_file, fold=fold, wordList_file=args.wordList,
+            hBuild_wordList_file=args.hBuildWordList, grammar_file=args.grammar_file,
+            all_labels_file=args.all_labels_file)
         if args.method == "recognition":
             test(args.start, args.end, args.method, args.hmm_insertion_penalty,
-                is_triletter=args.model_type=="triletter", fold=fold)
+                    is_triletter=args.model_type=="triletter", fold=fold, wordList_file=args.wordList,
+                    dict_file=args.dict, all_labels_file=args.all_labels_file)
         elif args.method == "verification":
             positive, negative, false_positive, false_negative = verify_simple(args.end, args.insertion_penalty,
                                                                 args.acceptance_threshold, args.beam_threshold,
@@ -285,23 +284,6 @@ def prepare_prototypes_file(prototypes_file, wordlist, n_states):
     prototype_config = {str(n_states): tokens}
     dump_json(prototypes_file, prototype_config)
 
-def get_five_set_list(wordlist, seed=3245):
-    with open(wordlist, 'r') as f:
-        tokens = f.readlines()
-    
-    tokens = [token.rstrip() for token in tokens]
-    tokens.remove('sil0')
-    tokens.remove('sil1')
-    random.seed(seed)
-    random.shuffle(tokens)
-    
-    five_set_list = []
-    for i in range(0, math.ceil(len(tokens)/5)):
-        start = i*5
-        end = (i+1)*5
-        five_set_list.append(tokens[start:end])
-    return five_set_list
-
 def print_to_stdout(str_list):
     for s in str_list:
         print(s)
@@ -312,9 +294,15 @@ def print_to_file(str_list, filepath):
             f.write(s + '\n')
         f.write('\n')
 
+# Helper function for argument validation 
+def validate_args(args):
+    if args.max_phrase_len < args.min_phrase_len:
+        raise ValueError("Max Phrase Len must be less than Min Phrase Len.")
+
 def main():
     args = parse_main_args()
     print(args)
+    validate_args(args)
     ########################################################################################
 
     if args.users: args.users = [user.capitalize() for user in args.users]
@@ -347,38 +335,25 @@ def main():
         if not os.path.exists('logs'):
             os.mkdir('logs')
         
+        phrase_len_arg = list(range(args.min_phrase_len, args.max_phrase_len+1))
         prepare_data(
             features_config,
             args.users,
-            isFingerspelling=isFingerspelling,
+            data_path=args.data_path,
+            phrase_len=phrase_len_arg,
+            isFingerspelling=args.is_fingerspelling,
             isSingleWord=args.is_single_word,
+            isBigram=args.is_bigram,
             num_threads=args.parallel_jobs
         )
 
     if args.test_type == 'none':
         sys.exit()
     
-    prepare_prototypes_file(args.prototypes_file, args.wordlist, args.n_states)
+    prepare_prototypes_file(args.prototypes_file, args.wordList, args.n_states)
 
     if args.test_type == 'test_on_train':
-        if args.train_type == 'five_sign':
-            five_set_list = get_five_set_list(args.wordlist, seed=args.random_state)
-            five_set_map = {}
-            for i,five_set in enumerate(five_set_list):
-                generate_text_files(
-                    features_config["features_dir"],
-                    isFingerspelling=False,
-                    isSingleWord=True,
-                    unique_words=five_set
-                )
-                print("Five Signs: ", five_set)
-                key = str(i)
-                fold = os.path.join(key, "")
-                five_set_map[key] = five_set
-                test_on_train(args, all_results, fold=fold, five_set=five_set)
-            dump_json("five_set_map.json", five_set_map)
-        else:
-            test_on_train(args, all_results)
+        test_on_train(args, all_results)
          
     elif args.test_type == 'cross_val' and args.cv_parallel:
         print("You have invoked parallel cross validation. Be prepared for dancing progress bars!")
@@ -527,8 +502,12 @@ def main():
                         args.parallel_jobs, args.parallel_classifier_training)
             else:
                 train(args.train_iters, args.mean, args.variance, args.transition_prob,
-                        features_file=args.features_file, prototypes_file=args.prototypes_file)
-                test(args.start, args.end, args.method, args.hmm_insertion_penalty)
+                        is_bigram=args.is_bigram, features_file=args.features_file,
+                        prototypes_file=args.prototypes_file, wordList_file=args.wordList,
+                        hBuild_wordList_file=args.hBuildWordList, grammar_file=args.grammar_file,
+                        all_labels_file=args.all_labels_file)
+                test(args.start, args.end, args.method, args.hmm_insertion_penalty, wordList_file = args.wordList,
+                        dict_file=args.dict, all_labels_file=args.all_labels_file)
             
             results = get_results(hresults_file)
             all_results[f'fold_{i}'] = results
@@ -582,10 +561,12 @@ def main():
             testSBHMM(args.start, args.end, args.method, classifiers, args.pca_components, args.pca, args.sbhmm_insertion_penalty, 
                         args.parallel_jobs, args.parallel_classifier_training)
         else:
-            train(args.train_iters, args.mean, args.variance, args.transition_prob, features_file=args.features_file,
-                    prototypes_file=args.prototypes_file)
+            train(args.train_iters, args.mean, args.variance, args.transition_prob, is_bigram=args.is_bigram,
+                    features_file=args.features_file, prototypes_file=args.prototypes_file, wordList_file=args.wordList,
+                    grammarWordList_file=args.grammarWordList, grammar_file=args.grammar_file, all_labels_file=args.all_labels_file)
             if args.method == "recognition":
-                test(args.start, args.end, args.method, args.hmm_insertion_penalty)
+                test(args.start, args.end, args.method, args.hmm_insertion_penalty, wordList_file=args.wordList,
+                        dict_file=args.dict, all_labels_file=args.all_labels_file)
             elif args.method == "verification":
                 positive, negative, false_positive, false_negative = verify_simple(
                     args.end,
@@ -784,7 +765,8 @@ def main():
 
         ### prepare_data ==> 3-sign
         print(args.method)
-        prepare_data(features_config, args.users, phrase_len=[3, 4, 5], prediction_len=[3], isSingleWord=args.isSingleWord) #uncomment
+        phrase_len_arg = list(range(args.min_phrase_len, args.max_phrase_len+1))
+        prepare_data(features_config, args.users, phrase_len=phrase_len_arg, prediction_len=[3], isSingleWord=args.isSingleWord) #uncomment
         
         word_counts = []
         phrase_counts = []
@@ -849,7 +831,7 @@ def main():
         # results => find data to add
         # pass to 4?
         input()
-        prepare_data(features_config, args.users, phrase_len=[3, 4, 5], prediction_len=[4], isSingleWord=args.isSingleWord)
+        prepare_data(features_config, args.users, phrase_len=phrase_len_arg, prediction_len=[4], isSingleWord=args.isSingleWord)
 
         word_counts = []
         phrase_counts = []
@@ -930,7 +912,7 @@ def main():
         input()
 
         #### 5-SIGN
-        prepare_data(features_config, args.users, phrase_len=[3, 4, 5], prediction_len=[5], isSingleWord=args.isSingleWord)
+        prepare_data(features_config, args.users, phrase_len=phrase_len_arg, prediction_len=[5], isSingleWord=args.isSingleWord)
         word_counts = []
         phrase_counts = []
         substitutions = 0

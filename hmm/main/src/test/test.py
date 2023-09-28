@@ -9,9 +9,23 @@ import glob
 import shutil
 from string import Template
 
-def test(start: int, end: int, method: str, insertion_penalty: int, beam_threshold: int = 2000, fold: str = "", is_triletter: bool = False) -> None:
+ENTER = '!ENTER'
+EXIT = '!EXIT'
+
+def test(
+    start: int,
+    end: int,
+    method: str,
+    insertion_penalty: int,
+    beam_threshold: int = 2000,
+    fold: str = "",
+    is_triletter: bool = False,
+    wordList_file: str = 'data/wordList',
+    dict_file: str = 'data/dict',
+    all_labels_file: str = 'data/all_labels.mlf',
+) -> None:
     """Tests the HMM using HTK. Calls HVite and HResults. Can perform
-    either recognition or verification. 
+    either recognition or verification.
 
     Parameters
     ----------
@@ -23,6 +37,10 @@ def test(start: int, end: int, method: str, insertion_penalty: int, beam_thresho
     if os.path.exists(f'results/{fold}'):
         shutil.rmtree(f'results/{fold}')
     os.makedirs(f'results/{fold}')
+    
+    if os.path.exists(f'logs/{fold}'):
+        if os.path.exists(f'logs/{fold}test.log'):
+            os.remove(f'logs/{fold}test.log')
 
     if method != 'alignment':
 
@@ -41,27 +59,28 @@ def test(start: int, end: int, method: str, insertion_penalty: int, beam_thresho
     if method == 'recognition':
         print("1111")
 
-        # HVite_str = (f'HVite -A -H $macros -f -m -S lists/test.data -i $results '
-        #              f'-p -10.0 -w wordNet.txt -s 25 dict wordList')
         if is_triletter:
             HVite_str = (f'HVite -A -H $macros -m -S lists/{fold}test.data -i '
-                     f'$results -p {insertion_penalty} -w wordNet.txt -s 25 dict_tri wordList_triletter')
+                            f'$results -p {insertion_penalty} -w wordNet.txt -s 25 dict_tri wordList_triletter '
+                            f'>> logs/{fold}test.log')
         else:
-            HVite_str = (f'HVite -A -H $macros -m -S lists/{fold}test.data -i '
-                     f'$results -p {insertion_penalty} -w wordNet.txt -s 25 dict wordList')
+            # HVite_str = (f'HVite -A -H $macros -m -S lists/{fold}test.data -i '
+            #          f'$results -p {insertion_penalty} -w wordNet.txt -s 25 {dict_file} {wordList_file}')
+            HVite_str = (f'HVite '
+                            f'-T 4 -u 100 '
+                            f'-A -H $macros -m -S lists/{fold}test.data -i '
+                            f'$results -p {insertion_penalty} -w wordNet.txt -s 25 {dict_file} {wordList_file} '
+                            f'>> logs/{fold}test.log')
 
         HVite_cmd = Template(HVite_str)
 
         if is_triletter:
-            HResults_str = (f'HResults -A -h -e \\?\\?\\? sil0 -e \\?\\?\\? '
-                        f'sil1 -p -t -I all_labels_triletter.mlf wordList_triletter $results '
+            HResults_str = (f'HResults -A -h -e \\?\\?\\? {ENTER} -e \\?\\?\\? '
+                        f'{EXIT} -p -t -I all_labels_triletter.mlf wordList_triletter $results '
                         f'>> $hresults')
         else:
-            # HResults_str = (f'HResults -A -h -e \\?\\?\\? sil0 -e \\?\\?\\? '
-            #             f'sil1 -p -t -I all_labels.mlf wordList $results '
-            #             f'>> $hresults')
-            HResults_str = (f'HResults -A -h -e \\?\\?\\? sil0 -e \\?\\?\\? '
-                        f'sil1 -t -I all_labels.mlf wordList $results '
+            HResults_str = (f'HResults -A -h -e \\?\\?\\? {ENTER} -e \\?\\?\\? '
+                        f'{EXIT} -t -I {all_labels_file} {wordList_file} $results '
                         f'>> $hresults')
         HResults_cmd = Template(HResults_str)
 
@@ -70,7 +89,7 @@ def test(start: int, end: int, method: str, insertion_penalty: int, beam_thresho
 
         HVite_str = (f'HVite -a -o N -T 1 -H $macros -m -f -S '
                      f'lists/{fold}train.data -i $results -t {beam_threshold} '
-                     f'-p {insertion_penalty} -I all_labels.mlf -s 25 dict wordList '
+                     f'-p {insertion_penalty} -I {all_labels_file} -s 25 {dict_file} {wordList_file} '
                      f'>/dev/null 2>&1')
         HVite_cmd = Template(HVite_str)
         HResults_cmd = Template('')
